@@ -1,0 +1,12 @@
+version: 1
+alias:
+  chrome: C:\Program Files\Google\Chrome\Application\chrome.exe
+
+list:
+  - |-
+    power shell
+    powershell
+  - |-
+    google.com
+    chrome
+    https://www.google.com
