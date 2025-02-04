@@ -79,11 +79,14 @@ namespace SimpleLauncher
                 File.Copy(src, filename);
             }
 
-            var input = new StreamReader(filename);
-            var result = _deserializer.Deserialize<YamlData>(input);
-            result.BuildCommandList(filename);
+            using (var input = new StreamReader(filename))
+            {
+                var result = _deserializer.Deserialize<YamlData>(input);
+                result.BuildCommandList(filename);
 
-            return result;
+                return result;
+
+            }
         }
     }
 }
