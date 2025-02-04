@@ -26,8 +26,8 @@ namespace SimpleLauncher
             CommandList["--edit"] = new CommandInfo
             {
                 Name = "--edit",
-                Exec = "cmd",
-                Args = string.Format("/c \"{0}\"", filename),
+                Exec = "explorer",
+                Args = string.Format("\"{0}\"", filename),
             };
 
             foreach (var item in List)
