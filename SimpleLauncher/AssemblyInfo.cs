@@ -12,5 +12,3 @@ using System.Windows;
 )]
 
 [assembly: Guid("BF37557B-8693-40F4-B9A8-CC83488F5399")]
-[assembly: AssemblyVersion("1.0.1.0")]
-[assembly: AssemblyFileVersion("1.0.1.0")]
