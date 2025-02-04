@@ -44,9 +44,8 @@ namespace SimpleLauncher
                 // メインウィンドウ
 
                 var mainWindow = new MainWindow();
-                mainWindow.WindowState = WindowState.Minimized;
                 mainWindow.ShowInTaskbar = false;
-                mainWindow.Show();
+                mainWindow.Hide();
             }
             else
             {
