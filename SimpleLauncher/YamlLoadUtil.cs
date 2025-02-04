@@ -48,9 +48,9 @@ namespace SimpleLauncher
 
     public class CommandInfo
     {
-        public string Name { get; set; }
-        public string Exec { get; set; }
-        public string Args { get; set; }
+        public string? Name { get; set; }
+        public string? Exec { get; set; }
+        public string? Args { get; set; }
     }
 
     public class YamlLoadUtil
