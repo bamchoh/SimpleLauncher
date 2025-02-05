@@ -5,12 +5,24 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:SimpleLauncher"
         mc:Ignorable="d"
-        Title="MainWindow" Height="30" Width="100" WindowStyle="None"
+        Title="SimpleLauncher" Height="160" Width="340" ResizeMode="NoResize"
         >
     <DockPanel>
         <DockPanel DockPanel.Dock="Top">
-            <Button x:Name="MinimizeButton" Content="最小化" Width="100" Height="30" Click="MinimizeButton_Click"/>
+            <Button x:Name="HideButton" Content="隠す" Width="100" Height="30" Click="HideButton_Click"/>
             <Label/>
         </DockPanel>
+        <DockPanel DockPanel.Dock="Top">
+            <Label Width="100" Content="ホットキー(現在)" />
+            <Label x:Name="HotKeyTextBlock" Width="100" Height="30" Content="Ctrl+Alt+O" />
+            <Label />
+        </DockPanel>
+        <DockPanel DockPanel.Dock="Top">
+            <Label Width="100" Content="ホットキー(設定)" />
+            <TextBox x:Name="HotKeyTextBox" Width="140" Height="30" Text="Ctrl+Alt+O" VerticalContentAlignment="Center" PreviewKeyDown="HotKeyTextBox_KeyDown" GotFocus="HotKeyTextBox_GotFocus"/>
+            <Button x:Name="SetHotKeyButton" Content="設定" Width="60" Height="30" Click="SetHotKeyButton_Click"/>
+            <Label />
+        </DockPanel>
+        <Label />
     </DockPanel>
 </Window>

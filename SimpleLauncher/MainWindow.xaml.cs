@@ -12,12 +12,50 @@ using System.Diagnostics;
 
 namespace SimpleLauncher
 {
+    public class HotKeyData
+    {
+        public ModifierKeys ModifierKeys { get; set; }
+        public Key Key { get; set; }
+
+        public HotKeyData()
+        {
+            this.ModifierKeys = ModifierKeys.Control | ModifierKeys.Alt;
+            this.Key = Key.O;
+        }
+
+        public override string ToString()
+        {
+            var hotKeyList = new List<string>();
+
+            if ((ModifierKeys & ModifierKeys.Shift) == ModifierKeys.Shift)
+            {
+                hotKeyList.Add("Shift");
+            }
+
+            if ((ModifierKeys & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                hotKeyList.Add("Ctrl");
+            }
+
+            if ((ModifierKeys & ModifierKeys.Alt) == ModifierKeys.Alt)
+            {
+                hotKeyList.Add("Alt");
+            }
+
+            hotKeyList.Add(Key.ToString());
+
+            return string.Join("+", hotKeyList);
+        }
+    }
+
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window
     {
         private HotKeyHelper _hotkey;
+        private HotKeyData _nextHotKey = new HotKeyData();
+        private HotKeyData _curHotKey = new HotKeyData();
 
         public MainWindow()
         {
@@ -25,10 +63,20 @@ namespace SimpleLauncher
 
             // HotKeyの登録
             this._hotkey = new HotKeyHelper(this);
-            this._hotkey.Register(ModifierKeys.Control | ModifierKeys.Alt, Key.O, HotKeyPressed);
+            RegisterHotKey();
         }
 
-        private async void HotKeyPressed(object? sender, EventArgs e)
+        private void RegisterHotKey()
+        {
+            this._hotkey.UnregisterAll();
+            this._hotkey.Register(_nextHotKey.ModifierKeys, _nextHotKey.Key, HotKeyPressed);
+            this._curHotKey = _nextHotKey;
+
+            this.HotKeyTextBlock.Content = _curHotKey.ToString();
+            this.HotKeyTextBox.Text = _nextHotKey.ToString();
+        }
+
+        private void HotKeyPressed(object? sender, EventArgs e)
         {
             var appdir = System.IO.Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SimpleLauncher");
 
@@ -71,6 +119,13 @@ namespace SimpleLauncher
             var output = process.StandardOutput.ReadLine();
             if (!string.IsNullOrEmpty(output))
             {
+                if (output == "--show setting")
+                {
+                    this.WindowState = WindowState.Normal;
+                    this.Show();
+                    return;
+                }
+
                 var cmd = yaml.CommandList[output];
                 try
                 {
@@ -98,9 +153,65 @@ namespace SimpleLauncher
             this._hotkey.Dispose();
         }
 
-        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        private void HideButton_Click(object sender, RoutedEventArgs e)
         {
-            this.WindowState = WindowState.Minimized;
+            this.Hide();
         }
+
+        private void SetHotKeyButton_Click(object sender, RoutedEventArgs e)
+        {
+            RegisterHotKey();
+        }
+
+        private void HotKeyTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if(e.Key == Key.Tab || e.Key == Key.Enter || e.Key == Key.Escape)
+            {
+                return;
+            }
+
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
+            {
+                _nextHotKey.ModifierKeys |= ModifierKeys.Shift;
+            }
+            else
+            {
+                _nextHotKey.ModifierKeys &= ~ModifierKeys.Shift;
+            }
+
+            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            {
+                _nextHotKey.ModifierKeys |= ModifierKeys.Control;
+            }
+            else
+            {
+                _nextHotKey.ModifierKeys &= ~ModifierKeys.Control;
+            }
+
+            if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
+            {
+                _nextHotKey.ModifierKeys |= ModifierKeys.Alt;
+            }
+            else
+            {
+                _nextHotKey.ModifierKeys &= ~ModifierKeys.Alt;
+            }
+
+            if (e.Key >= Key.A && e.Key <= Key.Z)
+            {
+                _nextHotKey.Key = e.Key;
+            }
+
+            this.HotKeyTextBox.Text = _nextHotKey.ToString();
+
+            e.Handled = true;
+        }
+
+        private void HotKeyTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            _nextHotKey = _curHotKey;
+            this.HotKeyTextBox.Text = _nextHotKey.ToString();
+        }
+
     }
 }
