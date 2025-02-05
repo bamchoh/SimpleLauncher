@@ -44,6 +44,9 @@ namespace SimpleLauncher
             var app = new ProcessStartInfo();
             app.FileName = "cmd";
             app.Arguments = "/c fzf";
+            app.StandardInputEncoding = Encoding.UTF8;
+            app.StandardOutputEncoding = Encoding.UTF8;
+            app.StandardErrorEncoding = Encoding.UTF8;
             app.RedirectStandardInput = true;
             app.RedirectStandardOutput = true;
             app.RedirectStandardError = true;
