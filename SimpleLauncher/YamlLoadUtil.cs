@@ -44,6 +44,15 @@ namespace SimpleLauncher
                 }
             }
         }
+
+        public string GetExecFromAlias(string exec)
+        {
+            if (Alias.ContainsKey(exec))
+            {
+                return Alias[exec];
+            }
+            return exec;
+        }
     }
 
     public class CommandInfo

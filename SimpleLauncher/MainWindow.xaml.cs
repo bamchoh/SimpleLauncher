@@ -69,7 +69,7 @@ namespace SimpleLauncher
             if (!string.IsNullOrEmpty(output))
             {
                 var cmd = yaml.CommandList[output];
-                Process.Start(cmd.Exec, cmd.Args);
+                Process.Start(yaml.GetExecFromAlias(cmd.Exec), cmd.Args);
             }
 
             var errout = process.StandardError.ReadLine();
