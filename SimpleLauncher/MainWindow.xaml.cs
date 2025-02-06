@@ -9,6 +9,9 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Diagnostics;
+using Microsoft.Extensions.Configuration;
+using System.Configuration;
+using System.Text.Json;
 
 namespace SimpleLauncher
 {
@@ -17,10 +20,34 @@ namespace SimpleLauncher
         public ModifierKeys ModifierKeys { get; set; }
         public Key Key { get; set; }
 
-        public HotKeyData()
+        public HotKeyData(string hotkeyStr)
         {
-            this.ModifierKeys = ModifierKeys.Control | ModifierKeys.Alt;
-            this.Key = Key.O;
+            try
+            {
+                foreach (var key in hotkeyStr.Split('+'))
+                {
+                    if (key == "Shift")
+                    {
+                        this.ModifierKeys |= ModifierKeys.Shift;
+                    }
+                    else if (key == "Ctrl")
+                    {
+                        this.ModifierKeys |= ModifierKeys.Control;
+                    }
+                    else if (key == "Alt")
+                    {
+                        this.ModifierKeys |= ModifierKeys.Alt;
+                    }
+                    else
+                    {
+                        this.Key = (Key)Enum.Parse(typeof(Key), key);
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                throw new Exception(string.Format("Hotkey String \"{0}\" is invalid.\n{1}", hotkeyStr, ex.Message));
+            }
         }
 
         public override string ToString()
@@ -48,32 +75,67 @@ namespace SimpleLauncher
         }
     }
 
+
+    public class MyConfiguration
+    {
+        private string _settingFilename = "appsettings.json";
+
+        public string HotKey { get; set; } = "Ctrl+Alt+O";
+
+        public MyConfiguration(string filename)
+        {
+            _settingFilename = filename;
+
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(System.IO.Directory.GetCurrentDirectory())
+                .AddJsonFile(filename);
+
+            var configuration = builder.Build();
+
+            configuration.Bind(this);
+        }
+
+        public void Save()
+        {
+            string jsonString = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+            System.IO.File.WriteAllText(_settingFilename, jsonString);
+        }
+    }
+
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window
     {
         private HotKeyHelper _hotkey;
-        private HotKeyData _nextHotKey = new HotKeyData();
-        private HotKeyData _curHotKey = new HotKeyData();
+        private HotKeyData _nextHotKey = null;
+        private HotKeyData _curHotKey = null;
+        private MyConfiguration myconfig;
 
         public MainWindow()
         {
             InitializeComponent();
 
+            myconfig = new MyConfiguration("appsettings.json");
+
+            _nextHotKey = new HotKeyData(myconfig.HotKey);
+
             // HotKeyの登録
             this._hotkey = new HotKeyHelper(this);
-            RegisterHotKey();
+            RegisterHotKey(_nextHotKey);
         }
 
-        private void RegisterHotKey()
+        private void RegisterHotKey(HotKeyData hotkey)
         {
             this._hotkey.UnregisterAll();
-            this._hotkey.Register(_nextHotKey.ModifierKeys, _nextHotKey.Key, HotKeyPressed);
-            this._curHotKey = _nextHotKey;
+            this._hotkey.Register(hotkey.ModifierKeys, hotkey.Key, HotKeyPressed);
+            this._curHotKey = hotkey;
 
             this.HotKeyTextBlock.Content = _curHotKey.ToString();
-            this.HotKeyTextBox.Text = _nextHotKey.ToString();
+            this.HotKeyTextBox.Text = hotkey.ToString();
+
+            myconfig.HotKey = hotkey.ToString();
+            myconfig.Save();
         }
 
         private void HotKeyPressed(object? sender, EventArgs e)
@@ -150,7 +212,7 @@ namespace SimpleLauncher
             base.OnClosed(e);
 
             // HotKeyの登録解除
-            this._hotkey.Dispose();
+            this._hotkey?.Dispose();
         }
 
         private void HideButton_Click(object sender, RoutedEventArgs e)
@@ -160,7 +222,7 @@ namespace SimpleLauncher
 
         private void SetHotKeyButton_Click(object sender, RoutedEventArgs e)
         {
-            RegisterHotKey();
+            RegisterHotKey(_nextHotKey);
         }
 
         private void HotKeyTextBox_KeyDown(object sender, KeyEventArgs e)

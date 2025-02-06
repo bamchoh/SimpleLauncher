@@ -42,10 +42,17 @@ namespace SimpleLauncher
             if (bOwnerShip)
             {
                 // メインウィンドウ
-
-                var mainWindow = new MainWindow();
-                mainWindow.ShowInTaskbar = false;
-                mainWindow.Hide();
+                try
+                {
+                    var mainWindow = new MainWindow();
+                    mainWindow.ShowInTaskbar = false;
+                    mainWindow.Hide();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    Shutdown();
+                }
             }
             else
             {
