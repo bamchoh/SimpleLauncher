@@ -189,6 +189,13 @@ namespace SimpleLauncher
                 }
 
                 var cmd = yaml.CommandList[output];
+
+                if (cmd.Exec == "(ff)")
+                {
+                    execFileFilter(cmd.Args);
+                    return;
+                }
+
                 try
                 {
                     Process.Start(yaml.GetExecFromAlias(cmd.Exec), cmd.Args);
@@ -199,6 +206,55 @@ namespace SimpleLauncher
             }
 
             var errout = process.StandardError.ReadLine();
+        }
+
+        private void execFileFilter(string args)
+        {
+            var app = new ProcessStartInfo();
+            app.FileName = "cmd";
+            app.Arguments = "/c fzf";
+            app.StandardInputEncoding = Encoding.UTF8;
+            app.StandardOutputEncoding = Encoding.UTF8;
+            app.StandardErrorEncoding = Encoding.UTF8;
+            app.RedirectStandardInput = true;
+            app.RedirectStandardOutput = true;
+            app.RedirectStandardError = true;
+            app.UseShellExecute = false;
+
+            var process = Process.Start(app);
+            if (process == null)
+            {
+                throw new System.Exception("Failed to start process.");
+            }
+
+            using (var sw = process.StandardInput)
+            {
+                IEnumerable<string> files =
+                    System.IO.Directory.EnumerateFiles(
+                        args, "*", System.IO.SearchOption.AllDirectories);
+
+                //ファイルを列挙する
+                foreach (string f in files)
+                {
+                    sw.WriteLine(f);
+                }
+            }
+
+            process.WaitForExit();
+
+            var output = process.StandardOutput.ReadLine();
+            if (!string.IsNullOrEmpty(output))
+            {
+                try
+                {
+                    Process.Start("explorer", output);
+                }
+                catch (System.Exception ex)
+                {
+                    MessageBox.Show(ex.Message, "実行エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+
+            }
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
