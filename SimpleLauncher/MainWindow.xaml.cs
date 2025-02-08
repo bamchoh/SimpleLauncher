@@ -208,7 +208,7 @@ namespace SimpleLauncher
             var errout = process.StandardError.ReadLine();
         }
 
-        private void execFileFilter(string args)
+        private void execFileFilter(string? args)
         {
             var app = new ProcessStartInfo();
             app.FileName = "cmd";
@@ -236,7 +236,12 @@ namespace SimpleLauncher
                 //ファイルを列挙する
                 foreach (string f in files)
                 {
-                    sw.WriteLine(f);
+                    var substring = f.Substring(args.Length);
+                    if (substring.StartsWith("\\"))
+                    {
+                        substring = substring.Substring(1);
+                    }
+                    sw.WriteLine(substring);
                 }
             }
 
@@ -247,7 +252,7 @@ namespace SimpleLauncher
             {
                 try
                 {
-                    Process.Start("explorer", output);
+                    Process.Start("explorer", System.IO.Path.Join(args, output));
                 }
                 catch (System.Exception ex)
                 {
