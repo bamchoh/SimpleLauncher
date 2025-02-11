@@ -138,8 +138,9 @@ namespace SimpleLauncher
             myconfig.Save();
         }
 
-        private void HotKeyPressed(object? sender, EventArgs e)
+        private void _internalHotKeyPressed(object? sender, EventArgs e)
         {
+
             var appdir = System.IO.Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SimpleLauncher");
 
             if (!System.IO.Directory.Exists(appdir))
@@ -199,13 +200,23 @@ namespace SimpleLauncher
                 try
                 {
                     Process.Start(yaml.GetExecFromAlias(cmd.Exec), cmd.Args);
-                } catch (System.Exception ex)
+                }
+                catch (System.Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "実行エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                    System.Windows.MessageBox.Show(ex.Message, "実行エラー", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
 
             var errout = process.StandardError.ReadLine();
+        }
+
+        private void HotKeyPressed(object? sender, EventArgs e)
+        {
+            this._hotkey.UnregisterAll();
+
+            _internalHotKeyPressed(sender, e);
+
+            this.RegisterHotKey(_curHotKey);
         }
 
         private void execFileFilter(string? args)
@@ -256,7 +267,7 @@ namespace SimpleLauncher
                 }
                 catch (System.Exception ex)
                 {
-                    MessageBox.Show(ex.Message, "実行エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                    System.Windows.MessageBox.Show(ex.Message, "実行エラー", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
 
             }
@@ -286,7 +297,7 @@ namespace SimpleLauncher
             RegisterHotKey(_nextHotKey);
         }
 
-        private void HotKeyTextBox_KeyDown(object sender, KeyEventArgs e)
+        private void HotKeyTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if(e.Key == Key.Tab || e.Key == Key.Enter || e.Key == Key.Escape)
             {

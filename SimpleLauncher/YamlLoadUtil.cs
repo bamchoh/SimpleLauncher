@@ -40,11 +40,17 @@ namespace SimpleLauncher
                 var splitted = item.Split('\n');
                 if (splitted.Length >= 2)
                 {
+                    var args = "";
+                    if(splitted.Length >= 3)
+                    {
+                        args = string.Join("\n", splitted.Skip(2));
+                    }
+
                     CommandList[splitted[0]] = new CommandInfo
                     {
                         Name = splitted[0],
                         Exec = splitted[1],
-                        Args = splitted.Length >= 3 ? splitted[2] : ""
+                        Args = args,
                     };
                 }
             }
