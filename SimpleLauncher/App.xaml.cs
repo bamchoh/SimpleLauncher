@@ -16,6 +16,7 @@ namespace SimpleLauncher
         // 内部変数
         private bool bOwnerShip = false;
         private Mutex? hMutex = null;
+        private MainWindow? mainWindow = null;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -23,6 +24,7 @@ namespace SimpleLauncher
 
             var icon = GetResourceStream(new Uri("favicon.ico", UriKind.Relative)).Stream;
             var menu = new System.Windows.Forms.ContextMenuStrip();
+            menu.Items.Add("設定", null, ShowMainWindow);
             menu.Items.Add("終了", null, Exit_Click);
             var notifyIcon = new System.Windows.Forms.NotifyIcon
             {
@@ -31,6 +33,12 @@ namespace SimpleLauncher
                 Text = "Simple Launcher",
                 ContextMenuStrip = menu
             };
+        }
+
+        private void ShowMainWindow(object? sender, EventArgs e)
+        {
+            mainWindow?.Show();
+            mainWindow?.Activate();
         }
 
         private void Exit_Click(object? sender, EventArgs e)
@@ -65,7 +73,7 @@ namespace SimpleLauncher
                 // メインウィンドウ
                 try
                 {
-                    var mainWindow = new MainWindow();
+                    mainWindow = new MainWindow();
                     mainWindow.ShowInTaskbar = false;
                     mainWindow.Hide();
                 }

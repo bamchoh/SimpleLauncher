@@ -30,11 +30,6 @@ namespace SimpleLauncher
                 Args = string.Format("\"{0}\"", filename),
             };
 
-            CommandList["--show setting"] = new CommandInfo
-            {
-                Name = "--show setting",
-            };
-
             foreach (var item in List)
             {
                 var splitted = item.Split('\n');

@@ -5,13 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:SimpleLauncher"
         mc:Ignorable="d"
-        Title="SimpleLauncher" Height="160" Width="340" ResizeMode="NoResize"
+        Title="SimpleLauncher" Height="160" Width="340" ResizeMode="NoResize" Closing="Window_Closing"
         >
     <DockPanel>
-        <DockPanel DockPanel.Dock="Top">
-            <Button x:Name="HideButton" Content="隠す" Width="100" Height="30" Click="HideButton_Click"/>
-            <Label/>
-        </DockPanel>
         <DockPanel DockPanel.Dock="Top">
             <Label Width="100" Content="ホットキー(現在)" />
             <Label x:Name="HotKeyTextBlock" Width="100" Height="30" Content="Ctrl+Alt+O" />

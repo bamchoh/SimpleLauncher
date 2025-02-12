@@ -182,13 +182,6 @@ namespace SimpleLauncher
             var output = process.StandardOutput.ReadLine();
             if (!string.IsNullOrEmpty(output))
             {
-                if (output == "--show setting")
-                {
-                    this.WindowState = WindowState.Normal;
-                    this.Show();
-                    return;
-                }
-
                 var cmd = yaml.CommandList[output];
 
                 if (cmd.Exec == "(ff)")
@@ -347,5 +340,10 @@ namespace SimpleLauncher
             this.HotKeyTextBox.Text = _nextHotKey.ToString();
         }
 
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            this.Hide();
+            e.Cancel = true;
+        }
     }
 }
