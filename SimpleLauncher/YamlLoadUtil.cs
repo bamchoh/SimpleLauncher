@@ -16,6 +16,8 @@ namespace SimpleLauncher
         public Dictionary<string, string> Alias { get; set; } = new Dictionary<string, string>();
         [YamlMember(Alias = "list")]
         public List<string> List { get; set; } = new List<string>();
+        [YamlMember(Alias = "bindings")]
+        public List<string> BindArguments { get; set; } = new List<string>();
 
         public Dictionary<string, CommandInfo> CommandList { get; set; } = new Dictionary<string, CommandInfo>();
 
@@ -58,6 +60,16 @@ namespace SimpleLauncher
                 return Alias[exec];
             }
             return exec;
+        }
+
+        public string GetBindArgumentList()
+        {
+            var sb = new StringBuilder();
+            foreach (var bind in BindArguments)
+            {
+                sb.AppendFormat("--bind \"{0}\" ", bind);
+            }
+            return sb.ToString().TrimEnd();
         }
     }
 

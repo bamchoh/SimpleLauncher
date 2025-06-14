@@ -171,7 +171,7 @@ namespace SimpleLauncher
 
             var app = new ProcessStartInfo();
             app.FileName = "fzf";
-            app.Arguments = "";
+            app.Arguments = yaml.GetBindArgumentList();
             app.StandardInputEncoding = Encoding.UTF8;
             app.StandardOutputEncoding = Encoding.UTF8;
             app.StandardErrorEncoding = Encoding.UTF8;
@@ -199,7 +199,18 @@ namespace SimpleLauncher
             var output = _process.StandardOutput.ReadLine();
             if (!string.IsNullOrEmpty(output))
             {
-                var cmd = yaml.CommandList[output];
+                var cmds = output.Split(":", 2);
+                if (cmds.Length < 2)
+                {
+                    System.Windows.MessageBox.Show("Invalid command output.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                var cmd = yaml.CommandList[cmds[1]];
+                if (!string.IsNullOrEmpty(cmds[0]))
+                {
+                    cmd.Exec = cmds[0];
+                }
 
                 if (cmd.Exec == "(ff)")
                 {
@@ -257,6 +268,7 @@ namespace SimpleLauncher
         {
             var app = new ProcessStartInfo();
             app.FileName = "fzf";
+            app.Arguments = "";
             app.StandardInputEncoding = Encoding.UTF8;
             app.StandardOutputEncoding = Encoding.UTF8;
             app.StandardErrorEncoding = Encoding.UTF8;
