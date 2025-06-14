@@ -171,8 +171,8 @@ namespace SimpleLauncher
             var yaml = YamlLoadUtil.Load(confpath);
 
             var app = new ProcessStartInfo();
-            app.FileName = "cmd";
-            app.Arguments = "/c fzf";
+            app.FileName = "fzf";
+            app.Arguments = "";
             app.StandardInputEncoding = Encoding.UTF8;
             app.StandardOutputEncoding = Encoding.UTF8;
             app.StandardErrorEncoding = Encoding.UTF8;
@@ -238,7 +238,7 @@ namespace SimpleLauncher
 
                     GetWindowThreadProcessId(hWnd, out uint pid);
                     if (pid == targetPid)
-        {
+                    {
                         targetWindow = hWnd;
                         SetForegroundWindow(hWnd);
                         return false; // 見つかったので列挙終了
@@ -257,8 +257,7 @@ namespace SimpleLauncher
         private void execFileFilter(string? args)
         {
             var app = new ProcessStartInfo();
-            app.FileName = "cmd";
-            app.Arguments = "/c fzf";
+            app.FileName = "fzf";
             app.StandardInputEncoding = Encoding.UTF8;
             app.StandardOutputEncoding = Encoding.UTF8;
             app.StandardErrorEncoding = Encoding.UTF8;
