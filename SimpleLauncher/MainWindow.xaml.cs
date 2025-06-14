@@ -12,6 +12,8 @@ using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using System.Configuration;
 using System.Text.Json;
+using System.Runtime.InteropServices;
+using System.Management;
 
 namespace SimpleLauncher
 {
@@ -107,10 +109,26 @@ namespace SimpleLauncher
     /// </summary>
     public partial class MainWindow : Window
     {
+        // Win32 API
+        [DllImport("user32.dll")]
+        private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+        
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
         private HotKeyHelper _hotkey;
         private HotKeyData _nextHotKey = null;
         private HotKeyData _curHotKey = null;
         private MyConfiguration myconfig;
+        private Process _process = null;
 
         public MainWindow()
         {
@@ -163,13 +181,13 @@ namespace SimpleLauncher
             app.RedirectStandardError = true;
             app.UseShellExecute = false;
 
-            var process = Process.Start(app);
-            if (process == null)
+            _process = Process.Start(app);
+            if (_process == null)
             {
                 throw new System.Exception("Failed to start process.");
             }
 
-            using (var sw = process.StandardInput)
+            using (var sw = _process.StandardInput)
             {
                 foreach (var item in yaml.CommandList.Keys)
                 {
@@ -177,9 +195,9 @@ namespace SimpleLauncher
                 }
             }
 
-            process.WaitForExit();
+            _process.WaitForExit();
 
-            var output = process.StandardOutput.ReadLine();
+            var output = _process.StandardOutput.ReadLine();
             if (!string.IsNullOrEmpty(output))
             {
                 var cmd = yaml.CommandList[output];
@@ -200,16 +218,40 @@ namespace SimpleLauncher
                 }
             }
 
-            var errout = process.StandardError.ReadLine();
+            var errout = _process.StandardError.ReadLine();
         }
 
-        private void HotKeyPressed(object? sender, EventArgs e)
+        private async void HotKeyPressed(object? sender, EventArgs e)
         {
-            this._hotkey.UnregisterAll();
+            // this._hotkey.UnregisterAll();
 
-            _internalHotKeyPressed(sender, e);
+            if (_process != null && !_process.HasExited)
+            {
+                var targetPid = (uint)_process.Id;
 
-            this.RegisterHotKey(_curHotKey);
+                IntPtr targetWindow = IntPtr.Zero;
+
+                EnumWindows((hWnd, lParam) =>
+                {
+                    if (!IsWindowVisible(hWnd))
+                        return true;
+
+                    GetWindowThreadProcessId(hWnd, out uint pid);
+                    if (pid == targetPid)
+        {
+                        targetWindow = hWnd;
+                        SetForegroundWindow(hWnd);
+                        return false; // 見つかったので列挙終了
+                    }
+
+                    return true;
+                }, IntPtr.Zero);
+            } else
+            {
+                await Task.Run(() => _internalHotKeyPressed(sender, e));
+            }
+
+            // this.RegisterHotKey(_curHotKey);
         }
 
         private void execFileFilter(string? args)
