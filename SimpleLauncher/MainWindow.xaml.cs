@@ -220,6 +220,8 @@ namespace SimpleLauncher
 
                 try
                 {
+                    // TODO: code が PATH にあるのになぜか認識されない
+                    //       今は 設定ファイルに alias を追加して回避している
                     Process.Start(yaml.GetExecFromAlias(cmd.Exec), cmd.Args);
                 }
                 catch (System.Exception ex)
