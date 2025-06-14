@@ -13,7 +13,6 @@ using Microsoft.Extensions.Configuration;
 using System.Configuration;
 using System.Text.Json;
 using System.Runtime.InteropServices;
-using System.Management;
 
 namespace SimpleLauncher
 {
