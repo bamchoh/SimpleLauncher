@@ -172,9 +172,9 @@ namespace SimpleLauncher
             var app = new ProcessStartInfo();
             app.FileName = "fzf";
             app.Arguments = yaml.GetBindArgumentList();
-            app.StandardInputEncoding = Encoding.UTF8;
-            app.StandardOutputEncoding = Encoding.UTF8;
-            app.StandardErrorEncoding = Encoding.UTF8;
+            app.StandardInputEncoding = new UTF8Encoding(false);
+            // app.StandardOutputEncoding = Encoding.UTF8;
+            // app.StandardErrorEncoding = Encoding.UTF8;
             app.RedirectStandardInput = true;
             app.RedirectStandardOutput = true;
             app.RedirectStandardError = true;
