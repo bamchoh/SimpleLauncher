@@ -171,7 +171,7 @@ namespace SimpleLauncher
 
             var app = new ProcessStartInfo();
             app.FileName = "fzf";
-            app.Arguments = yaml.GetBindArgumentList();
+            app.Arguments = $"--with-nth=1 {yaml.GetBindArgumentList()}";
             app.StandardInputEncoding = new UTF8Encoding(false);
             // app.StandardOutputEncoding = Encoding.UTF8;
             // app.StandardErrorEncoding = Encoding.UTF8;
@@ -190,7 +190,15 @@ namespace SimpleLauncher
             {
                 foreach (var item in yaml.CommandList.Keys)
                 {
-                    sw.WriteLine(item);
+                    var cmd = yaml.CommandList[item];
+
+                    var items = new List<string>() {
+                        item,
+                        cmd.Exec,
+                        cmd.Args,
+                    };
+
+                    sw.WriteLine(string.Join("\t", items));
                 }
             }
 
