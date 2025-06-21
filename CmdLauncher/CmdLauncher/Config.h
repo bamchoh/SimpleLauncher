@@ -2,6 +2,8 @@
 
 #include "yaml-cpp/yaml.h"
 
+#include "CommandInfo.h"
+
 namespace CmdLauncher
 {
 	class Config
@@ -15,7 +17,7 @@ namespace CmdLauncher
 
 		int GetVersion() const { return version; }
 
-		const std::vector<std::string>& GetList() const { return list; }
+		const std::vector<CmdLauncher::CommandInfo>& GetList() const { return list; }
 
 		const std::map<std::string, std::string>& GetAlias() const { return alias; }
 
@@ -23,7 +25,7 @@ namespace CmdLauncher
 
 	private:
 		int version = 0;
-		std::vector<std::string> list;
+		std::vector<CmdLauncher::CommandInfo> list;
 		std::map<std::string, std::string> alias;	
 		std::vector<std::string> bindings;
 	};

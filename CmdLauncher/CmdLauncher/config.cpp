@@ -26,7 +26,8 @@ namespace CmdLauncher
 
 			if (config["list"]) {
 				for (const auto& item : config["list"]) {
-					list.push_back(item.as<std::string>());
+					auto commandInfo = CmdLauncher::CommandInfo::Create(item.as<std::string>());
+					list.push_back(*commandInfo);
 				}
 			}
 

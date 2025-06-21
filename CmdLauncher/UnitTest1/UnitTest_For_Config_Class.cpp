@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "CppUnitTest.h"
 #include "../CmdLauncher/Config.h"
+#include "../CmdLauncher/CommandInfo.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -43,21 +44,43 @@ namespace UnitTest1
 
 		TEST_METHOD(List_ShouldContain_OneItem)
 		{
-			const std::string yamlContents = R"(list: [item1])";
+			const std::string yamlContents = R"(
+list: 
+  - |-
+    name1
+    exec1
+    args1
+)";
 			auto [errmsg, config] = CmdLauncher::Config::Load(yamlContents);
 			Assert::IsTrue(errmsg.empty());
 			Assert::AreEqual(size_t(1), config->GetList().size());
-			Assert::AreEqual(std::string("item1"), config->GetList()[0]);
+			Assert::AreEqual(std::string("name1"), config->GetList()[0].GetName());
+			Assert::AreEqual(std::string("exec1"), config->GetList()[0].GetExec());
+			Assert::AreEqual(std::string("args1"), config->GetList()[0].GetArgs());
 		}
 
 		TEST_METHOD(List_ShouldContain_TwoItems)
 		{
-			const std::string yamlContents = R"(list: [item1, item2])";
+			const std::string yamlContents = R"(
+list: 
+  - |-
+    name1
+    exec1
+    args1
+  - |-
+    name2
+    exec2
+    args2
+)";
 			auto [errmsg, config] = CmdLauncher::Config::Load(yamlContents);
 			Assert::IsTrue(errmsg.empty());
 			Assert::AreEqual(size_t(2), config->GetList().size());
-			Assert::AreEqual(std::string("item1"), config->GetList()[0]);
-			Assert::AreEqual(std::string("item2"), config->GetList()[1]);
+			Assert::AreEqual(std::string("name1"), config->GetList()[0].GetName());
+			Assert::AreEqual(std::string("exec1"), config->GetList()[0].GetExec());
+			Assert::AreEqual(std::string("args1"), config->GetList()[0].GetArgs());
+			Assert::AreEqual(std::string("name2"), config->GetList()[1].GetName());
+			Assert::AreEqual(std::string("exec2"), config->GetList()[1].GetExec());
+			Assert::AreEqual(std::string("args2"), config->GetList()[1].GetArgs());
 		}
 
 		TEST_METHOD(Alias_ShouldBe_Empty_When_NoAliasSpecified)
@@ -118,7 +141,15 @@ namespace UnitTest1
 		{
 			const std::string yamlContents = R"(
 version: 2
-list: [item1, item2]
+list: 
+  - |-
+    name1
+    exec1
+    args1
+  - |-
+    name2
+    exec2
+    args2
 alias: 
   key1: value1
   key2: value2
@@ -128,8 +159,12 @@ bindings: [binding1, binding2]
 			Assert::IsTrue(errmsg.empty());
 			Assert::AreEqual(2, config->GetVersion());
 			Assert::AreEqual(size_t(2), config->GetList().size());
-			Assert::AreEqual(std::string("item1"), config->GetList()[0]);
-			Assert::AreEqual(std::string("item2"), config->GetList()[1]);
+			Assert::AreEqual(std::string("name1"), config->GetList()[0].GetName());
+			Assert::AreEqual(std::string("exec1"), config->GetList()[0].GetExec());
+			Assert::AreEqual(std::string("args1"), config->GetList()[0].GetArgs());
+			Assert::AreEqual(std::string("name2"), config->GetList()[1].GetName());
+			Assert::AreEqual(std::string("exec2"), config->GetList()[1].GetExec());
+			Assert::AreEqual(std::string("args2"), config->GetList()[1].GetArgs());
 			Assert::AreEqual(size_t(2), config->GetAlias().size());
 			Assert::AreEqual(std::string("value1"), config->GetAlias().at("key1"));
 			Assert::AreEqual(std::string("value2"), config->GetAlias().at("key2"));
@@ -160,7 +195,15 @@ bindings: [binding1, binding2]
 		TEST_METHOD(MissingFields_ShouldWork)
 		{
 			const std::string yamlContents = R"(version: 1
-list: [item1, item2]
+list: 
+  - |-
+    name1
+    exec1
+    args1
+  - |-
+    name2
+    exec2
+    args2
 alias: 
   key1: value1
 bindings: [binding1, binding2]
@@ -169,8 +212,12 @@ bindings: [binding1, binding2]
 			Assert::IsTrue(errmsg.empty());
 			Assert::AreEqual(1, config->GetVersion());
 			Assert::AreEqual(size_t(2), config->GetList().size());
-			Assert::AreEqual(std::string("item1"), config->GetList()[0]);
-			Assert::AreEqual(std::string("item2"), config->GetList()[1]);
+			Assert::AreEqual(std::string("name1"), config->GetList()[0].GetName());
+			Assert::AreEqual(std::string("exec1"), config->GetList()[0].GetExec());
+			Assert::AreEqual(std::string("args1"), config->GetList()[0].GetArgs());
+			Assert::AreEqual(std::string("name2"), config->GetList()[1].GetName());
+			Assert::AreEqual(std::string("exec2"), config->GetList()[1].GetExec());
+			Assert::AreEqual(std::string("args2"), config->GetList()[1].GetArgs());
 			Assert::AreEqual(size_t(1), config->GetAlias().size());
 			Assert::AreEqual(std::string("value1"), config->GetAlias().at("key1"));
 			Assert::AreEqual(size_t(2), config->GetBindings().size());
@@ -179,6 +226,5 @@ bindings: [binding1, binding2]
 			// The missing fields should not cause any issues, they should just be empty
 			Assert::IsTrue(config->GetAlias().find("key2") == config->GetAlias().end());
 		}
-
 	};
 }
