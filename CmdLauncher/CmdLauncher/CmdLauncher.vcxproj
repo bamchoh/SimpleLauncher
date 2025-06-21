@@ -135,6 +135,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CmdLauncher.cpp" />
+    <ClCompile Include="Config.cpp" />
+    <ClCompile Include="Runner.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Config.h" />
+    <ClInclude Include="Runner.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

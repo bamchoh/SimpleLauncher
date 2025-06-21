@@ -8,7 +8,8 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
-#include "yaml-cpp/yaml.h"
+
+#include "Runner.h"
 
 namespace fs = std::filesystem;
 
@@ -198,36 +199,8 @@ bool LaunchProcess(const std::string& applicationPathUtf8, const std::string& co
 
 int main()
 {
-    DWORD size = GetCurrentDirectoryW(0, NULL);
-    if (size == 0)
-    {
-        std::cerr << "カレントディレクトリのサイズ取得に失敗しました。" << std::endl;
-        return 1;
-    }
-
-    std::wstring dir(size, L'\0');
-    if (GetCurrentDirectoryW(size, &dir[0]) == 0)
-    {
-        std::cerr << "カレントディレクトリの取得に失敗しました。" << std::endl;
-        return 1;
-    }
-
-    // null 終端を削除
-    dir.resize(wcslen(dir.c_str()));
-
-    std::string utf8Dir = Utf16ToUtf8(dir);
-    std::cout << "カレントディレクトリ: " << utf8Dir << std::endl;
-
-    YAML::Node config = YAML::LoadFile("config.yaml");
-
-    if (config["list"]) {
-		std::cout << "List of items:\n";
-		for (const auto& item : config["list"]) {
-			std::cout << "- " << item.as<std::string>() << "\n";
-		}
-    }
-
-    return 0;
+    CmdLauncher::Runner runner;
+	runner.Run("config.yaml");
 
     std::string appPath = "fzf";
     std::string cmdLine = "";
