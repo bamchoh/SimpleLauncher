@@ -5,20 +5,16 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:SimpleLauncher"
         mc:Ignorable="d"
-        Title="SimpleLauncher" Height="160" Width="340" ResizeMode="NoResize" Closing="Window_Closing"
-        >
+        PreviewKeyDown="Window_PreviewKeyDown"
+        Title="MainWindow" Height="450" Width="800">
     <DockPanel>
-        <DockPanel DockPanel.Dock="Top">
-            <Label Width="100" Content="ホットキー(現在)" />
-            <Label x:Name="HotKeyTextBlock" Width="100" Height="30" Content="Ctrl+Alt+O" />
-            <Label />
-        </DockPanel>
-        <DockPanel DockPanel.Dock="Top">
-            <Label Width="100" Content="ホットキー(設定)" />
-            <TextBox x:Name="HotKeyTextBox" Width="140" Height="30" Text="Ctrl+Alt+O" VerticalContentAlignment="Center" PreviewKeyDown="HotKeyTextBox_KeyDown" GotFocus="HotKeyTextBox_GotFocus"/>
-            <Button x:Name="SetHotKeyButton" Content="設定" Width="60" Height="30" Click="SetHotKeyButton_Click"/>
-            <Label />
-        </DockPanel>
-        <Label />
+        <TextBox x:Name="PatternTextBox" Height="30" Margin="10" Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Top"/>
+        <ListBox x:Name="FilteredResultList" Margin="10" ItemsSource="{Binding FilteredResult}" SelectedItem="{Binding SelectedItem}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <local:HookedTextBlock Text="{Binding}" />
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
     </DockPanel>
 </Window>

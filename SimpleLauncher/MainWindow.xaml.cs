@@ -77,31 +77,6 @@ namespace SimpleLauncher
     }
 
 
-    public class MyConfiguration
-    {
-        private string _settingFilename = "appsettings.json";
-
-        public string HotKey { get; set; } = "Ctrl+Alt+O";
-
-        public MyConfiguration(string filename)
-        {
-            _settingFilename = filename;
-
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(System.IO.Directory.GetCurrentDirectory())
-                .AddJsonFile(filename);
-
-            var configuration = builder.Build();
-
-            configuration.Bind(this);
-        }
-
-        public void Save()
-        {
-            string jsonString = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
-            System.IO.File.WriteAllText(_settingFilename, jsonString);
-        }
-    }
 
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -120,22 +95,21 @@ namespace SimpleLauncher
 
         [DllImport("user32.dll")]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
-        
+
         private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
         private HotKeyHelper _hotkey;
         private HotKeyData _nextHotKey = null;
         private HotKeyData _curHotKey = null;
-        private MyConfiguration myconfig;
-        private Process _process = null;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            myconfig = new MyConfiguration("appsettings.json");
+            this.DataContext = new MainWindowVM();
+            Loaded += (s, e) => PatternTextBox.Focus();
 
-            _nextHotKey = new HotKeyData(myconfig.HotKey);
+            _nextHotKey = new HotKeyData("Ctrl+Alt+O");
 
             // HotKeyの登録
             this._hotkey = new HotKeyHelper(this);
@@ -147,263 +121,162 @@ namespace SimpleLauncher
             this._hotkey.UnregisterAll();
             this._hotkey.Register(hotkey.ModifierKeys, hotkey.Key, HotKeyPressed);
             this._curHotKey = hotkey;
-
-            this.HotKeyTextBlock.Content = _curHotKey.ToString();
-            this.HotKeyTextBox.Text = hotkey.ToString();
-
-            myconfig.HotKey = hotkey.ToString();
-            myconfig.Save();
         }
 
-        private void _internalHotKeyPressed(object? sender, EventArgs e)
+        private void HotKeyPressed(object? sender, EventArgs e)
         {
-
-            var appdir = System.IO.Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SimpleLauncher");
-
-            if (!System.IO.Directory.Exists(appdir))
-            {
-                System.IO.Directory.CreateDirectory(appdir);
-            }
-
-            var confpath = System.IO.Path.Join(appdir, "simple-launcher.yaml");
-
-            var yaml = YamlLoadUtil.Load(confpath);
-
-            var app = new ProcessStartInfo();
-            app.FileName = "fzf";
-            app.Arguments = $"--with-nth=1 {yaml.GetBindArgumentList()}";
-            app.StandardInputEncoding = new UTF8Encoding(false);
-            // app.StandardOutputEncoding = Encoding.UTF8;
-            // app.StandardErrorEncoding = Encoding.UTF8;
-            app.RedirectStandardInput = true;
-            app.RedirectStandardOutput = true;
-            app.RedirectStandardError = true;
-            app.UseShellExecute = false;
-
-            _process = Process.Start(app);
-            if (_process == null)
-            {
-                throw new System.Exception("Failed to start process.");
-            }
-
-            using (var sw = _process.StandardInput)
-            {
-                foreach (var item in yaml.CommandList.Keys)
-                {
-                    var cmd = yaml.CommandList[item];
-
-                    var items = new List<string>() {
-                        item,
-                        cmd.Exec,
-                        cmd.Args,
-                    };
-
-                    sw.WriteLine(string.Join("\t", items));
-                }
-            }
-
-            _process.WaitForExit();
-
-            var output = _process.StandardOutput.ReadLine();
-            if (!string.IsNullOrEmpty(output))
-            {
-                var cmds = output.Split(":", 2);
-                if (cmds.Length < 2)
-                {
-                    System.Windows.MessageBox.Show("Invalid command output.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return;
-                }
-
-                var cmd = yaml.CommandList[cmds[1]];
-                if (!string.IsNullOrEmpty(cmds[0]))
-                {
-                    cmd.Exec = cmds[0];
-                }
-
-                if (cmd.Exec == "(ff)")
-                {
-                    execFileFilter(cmd.Args);
-                    return;
-                }
-
-                try
-                {
-                    Process.Start(PathResolver.FindExecutableInPath(yaml.GetExecFromAlias(cmd.Exec)), cmd.Args);
-                }
-                catch (System.Exception ex)
-                {
-                    System.Windows.MessageBox.Show(ex.Message, "実行エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
-
-            var errout = _process.StandardError.ReadLine();
-        }
-
-        private async void HotKeyPressed(object? sender, EventArgs e)
-        {
-            // this._hotkey.UnregisterAll();
-
-            if (_process != null && !_process.HasExited)
-            {
-                var targetPid = (uint)_process.Id;
-
-                IntPtr targetWindow = IntPtr.Zero;
-
-                EnumWindows((hWnd, lParam) =>
-                {
-                    if (!IsWindowVisible(hWnd))
-                        return true;
-
-                    GetWindowThreadProcessId(hWnd, out uint pid);
-                    if (pid == targetPid)
-                    {
-                        targetWindow = hWnd;
-                        SetForegroundWindow(hWnd);
-                        return false; // 見つかったので列挙終了
-                    }
-
-                    return true;
-                }, IntPtr.Zero);
-            } else
-            {
-                await Task.Run(() => _internalHotKeyPressed(sender, e));
-            }
-
-            // this.RegisterHotKey(_curHotKey);
-        }
-
-        private void execFileFilter(string? args)
-        {
-            var app = new ProcessStartInfo();
-            app.FileName = "fzf";
-            app.Arguments = "";
-            app.StandardInputEncoding = Encoding.UTF8;
-            app.StandardOutputEncoding = Encoding.UTF8;
-            app.StandardErrorEncoding = Encoding.UTF8;
-            app.RedirectStandardInput = true;
-            app.RedirectStandardOutput = true;
-            app.RedirectStandardError = true;
-            app.UseShellExecute = false;
-
-            var process = Process.Start(app);
-            if (process == null)
-            {
-                throw new System.Exception("Failed to start process.");
-            }
-
-            using (var sw = process.StandardInput)
-            {
-                IEnumerable<string> files =
-                    System.IO.Directory.EnumerateFiles(
-                        args, "*", System.IO.SearchOption.AllDirectories);
-
-                //ファイルを列挙する
-                foreach (string f in files)
-                {
-                    var substring = f.Substring(args.Length);
-                    if (substring.StartsWith("\\"))
-                    {
-                        substring = substring.Substring(1);
-                    }
-                    sw.WriteLine(substring);
-                }
-            }
-
-            process.WaitForExit();
-
-            var output = process.StandardOutput.ReadLine();
-            if (!string.IsNullOrEmpty(output))
-            {
-                try
-                {
-                    Process.Start("explorer", System.IO.Path.Join(args, output));
-                }
-                catch (System.Exception ex)
-                {
-                    System.Windows.MessageBox.Show(ex.Message, "実行エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-
-            }
-        }
-
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            // ウィンドウを閉じます。
-            Close();
-        }
-
-        protected override void OnClosed(EventArgs e)
-        {
-            base.OnClosed(e);
-
-            // HotKeyの登録解除
-            this._hotkey?.Dispose();
-        }
-
-        private void HideButton_Click(object sender, RoutedEventArgs e)
-        {
-            this.Hide();
-        }
-
-        private void SetHotKeyButton_Click(object sender, RoutedEventArgs e)
-        {
-            RegisterHotKey(_nextHotKey);
-        }
-
-        private void HotKeyTextBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            if(e.Key == Key.Tab || e.Key == Key.Enter || e.Key == Key.Escape)
-            {
+            if (this.DataContext == null)
                 return;
-            }
 
-            if ((Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift)
-            {
-                _nextHotKey.ModifierKeys |= ModifierKeys.Shift;
-            }
-            else
-            {
-                _nextHotKey.ModifierKeys &= ~ModifierKeys.Shift;
-            }
+            this.Show();
 
-            if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
-            {
-                _nextHotKey.ModifierKeys |= ModifierKeys.Control;
-            }
-            else
-            {
-                _nextHotKey.ModifierKeys &= ~ModifierKeys.Control;
-            }
+            this.Activate();
 
-            if ((Keyboard.Modifiers & ModifierKeys.Alt) == ModifierKeys.Alt)
-            {
-                _nextHotKey.ModifierKeys |= ModifierKeys.Alt;
-            }
-            else
-            {
-                _nextHotKey.ModifierKeys &= ~ModifierKeys.Alt;
-            }
+            PatternTextBox.Text = "";
 
-            if (e.Key >= Key.A && e.Key <= Key.Z)
-            {
-                _nextHotKey.Key = e.Key;
-            }
-
-            this.HotKeyTextBox.Text = _nextHotKey.ToString();
-
-            e.Handled = true;
+            PatternTextBox.Focus();
         }
 
-        private void HotKeyTextBox_GotFocus(object sender, RoutedEventArgs e)
+        private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
-            _nextHotKey = _curHotKey;
-            this.HotKeyTextBox.Text = _nextHotKey.ToString();
+            // Ctrl 押しながら
+            if (Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                // Ctrl + J → 下移動
+                if (e.Key == Key.N)
+                {
+                    if (FilteredResultList.SelectedIndex < FilteredResultList.Items.Count - 1)
+                        FilteredResultList.SelectedIndex++;
+
+                    FilteredResultList.ScrollIntoView(FilteredResultList.SelectedItem);
+                    e.Handled = true;
+                }
+
+                // Ctrl + K → 上移動
+                else if (e.Key == Key.P)
+                {
+                    if (FilteredResultList.SelectedIndex > 0)
+                        FilteredResultList.SelectedIndex--;
+
+                    FilteredResultList.ScrollIntoView(FilteredResultList.SelectedItem);
+                    e.Handled = true;
+                }
+
+                else if (e.Key == Key.Enter)
+                {
+                    var vm = (MainWindowVM)this.DataContext;
+
+                    try
+                    {
+                        if (vm.SelectedItem != null)
+                        {
+                            vm.Execute(vm.SelectedItem, "runas");
+                        }
+                        this.Hide();
+                    }
+                    catch (System.Exception ex)
+                    {
+                        System.Windows.MessageBox.Show(ex.Message, "実行エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.Enter)
+            {
+                var vm = (MainWindowVM)this.DataContext;
+                if (vm.SelectedItem != null)
+                {
+                    vm.Execute(vm.SelectedItem);
+                }
+
+                this.Hide();
+
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                this.Hide();
+                e.Handled = true;
+            }
+        }
+    }
+
+
+    public class TextBlockPart
+    {
+        public string Text { get; set; } = "";
+        public bool IsHighlighted { get; set; }
+    }
+
+    public class HookedTextBlock : TextBlock
+    {
+        static HookedTextBlock()
+        {
+            TextProperty.OverrideMetadata(
+                typeof(HookedTextBlock),
+                new FrameworkPropertyMetadata("", OnTextChanged)
+            );
         }
 
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        private static void OnTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            this.Hide();
-            e.Cancel = true;
+            var self = (HookedTextBlock)d;
+
+            var vm = self.DataContext as FilterResult;
+
+            string text = (string)e.NewValue ?? "";
+            self.Inlines.Clear();
+
+            var splitTexts = SplitTextByHighlight(text, vm.Pos);
+
+            foreach (var part in splitTexts)
+            {
+                if (part.IsHighlighted)
+                {
+                    self.Inlines.Add(new Run(part.Text) { FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Colors.Red) });
+                }
+                else
+                {
+                    self.Inlines.Add(new Run(part.Text));
+                }
+            }
+        }
+
+        private static List<TextBlockPart> SplitTextByHighlight(
+            string fullText, List<int> highlightIndexes)
+        {
+            var result = new List<TextBlockPart>();
+            if (string.IsNullOrEmpty(fullText)) return result;
+
+            // 強調インデックスを高速に検索できる HashSet に
+            var highlightSet = new HashSet<int>(highlightIndexes);
+
+            int pos = 0;
+            while (pos < fullText.Length)
+            {
+                bool currentIsHighlighted = highlightSet.Contains(pos);
+
+                int start = pos;
+                pos++;
+
+                // 同じ種類（強調/通常）が続く間まとめる
+                while (pos < fullText.Length &&
+                        highlightSet.Contains(pos) == currentIsHighlighted)
+                {
+                    pos++;
+                }
+
+                string substring = fullText.Substring(start, pos - start);
+
+                result.Add(new TextBlockPart
+                {
+                    Text = substring,
+                    IsHighlighted = currentIsHighlighted
+                });
+            }
+
+            return result;
         }
     }
 }

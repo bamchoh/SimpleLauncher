@@ -24,9 +24,9 @@ namespace SimpleLauncher
             }
 
             // Windowsの場合、拡張子がない場合は .exe を補う
-            string[] extensions = Environment.OSVersion.Platform == PlatformID.Win32NT
-                ? (Environment.GetEnvironmentVariable("PATHEXT")?.Split(';') ?? new[] { ".exe", ".bat", ".cmd" })
-                : new[] { "" }; // UNIX系では拡張子を使わないことが多い
+            var extensions = Environment.OSVersion.Platform == PlatformID.Win32NT
+                ? (Environment.GetEnvironmentVariable("PATHEXT")?.Split(';').ToList() ?? new List<string>() { ".exe", ".bat", ".cmd" })
+                : new List<string>() { "" }; // UNIX系では拡張子を使わないことが多い
 
             // PATH 環境変数の取得
             string? pathEnv = Environment.GetEnvironmentVariable("PATH");
@@ -38,7 +38,8 @@ namespace SimpleLauncher
             {
                 foreach (var ext in extensions)
                 {
-                    string fullPath = Path.Combine(dir, exeName + ext);
+                    var filename = exeName.ToLower().EndsWith(ext.ToLower()) ? exeName : exeName + ext;
+                    string fullPath = Path.Combine(dir, filename);
                     if (File.Exists(fullPath) && IsExecutable(fullPath))
                     {
                         return Path.GetFullPath(fullPath);

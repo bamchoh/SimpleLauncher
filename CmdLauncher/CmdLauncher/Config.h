@@ -19,6 +19,15 @@ namespace CmdLauncher
 
 		const std::vector<CmdLauncher::CommandInfo>& GetList() const { return list; }
 
+		const std::vector<std::string> GetNameList() const
+		{
+			std::vector<std::string> names;
+			for (const auto& command : list) {
+				names.push_back(command.GetName());
+			}
+			return names;
+		}
+
 		const std::map<std::string, std::string>& GetAlias() const { return alias; }
 
 		const std::vector<std::string>& GetBindings() const { return bindings; }
