@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:SimpleLauncher"
         mc:Ignorable="d"
         PreviewKeyDown="Window_PreviewKeyDown"
-        Title="MainWindow" Height="450" Width="800">
+        Title="Simple Launcher" Height="450" Width="800">
     <DockPanel>
         <TextBox x:Name="PatternTextBox" Height="30" Margin="10" Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Top"/>
         <ListBox x:Name="FilteredResultList" Margin="10" ItemsSource="{Binding FilteredResult}" SelectedItem="{Binding SelectedItem}">
