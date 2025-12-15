@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:SimpleLauncher"
         mc:Ignorable="d"
         PreviewKeyDown="Window_PreviewKeyDown"
+        Closing="Window_Closing"
         Title="Simple Launcher" Height="450" Width="800">
     <DockPanel>
         <TextBox x:Name="PatternTextBox" Height="30" Margin="10" Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Top"/>

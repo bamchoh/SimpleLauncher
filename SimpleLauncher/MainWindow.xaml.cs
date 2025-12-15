@@ -200,6 +200,15 @@ namespace SimpleLauncher
                 e.Handled = true;
             }
         }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // ユーザー操作による Close をキャンセル
+            e.Cancel = true;
+
+            // ウィンドウを非表示にする
+            this.Hide();
+        }
     }
 
 
