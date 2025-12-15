@@ -168,7 +168,7 @@ namespace SimpleLauncher
             {
                 var psi = new ProcessStartInfo
                 {
-                    FileName = "tiny-fzf",
+                    FileName = "fzf-filterd",
                     Arguments = "",
                     UseShellExecute = false,
                     CreateNoWindow = true,
