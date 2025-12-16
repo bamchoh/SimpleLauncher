@@ -170,6 +170,20 @@ namespace SimpleLauncher
                     e.Handled = true;
                 }
 
+                else if (e.Key == Key.I)
+                {
+                    var vm = (MainWindowVM)this.DataContext;
+
+                    if (vm.SelectedItem != null)
+                    {
+                        vm.OpenFileLocation(vm.SelectedItem);
+                    }
+
+                    this.Hide();
+
+                    e.Handled = true;
+                }
+
                 else if (e.Key == Key.Enter)
                 {
                     var vm = (MainWindowVM)this.DataContext;

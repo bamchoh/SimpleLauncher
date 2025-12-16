@@ -1,4 +1,6 @@
-﻿using Microsoft.Win32;
+﻿using IWshRuntimeLibrary;
+using Microsoft.Win32;
+using Prism.Mvvm;
 using StreamJsonRpc;
 using System;
 using System.Collections.Generic;
@@ -9,10 +11,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using Prism.Mvvm;
 
 namespace SimpleLauncher
 {
@@ -106,6 +108,63 @@ namespace SimpleLauncher
 
         private YamlData yamlData;
 
+        private bool IsShortcut(string path)
+        {
+            return string.Equals(System.IO.Path.GetExtension(path), ".lnk", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public void OpenFileLocation(FilterResult filterResult)
+        {
+            switch (filterResult.Type)
+            {
+                case "list":
+                    var targetPath = launchableItems[filterResult.Text].Path;
+
+                    if (IsShortcut(targetPath))
+                    {
+                        var shell = new WshShell();
+                        IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(targetPath);
+                        targetPath = shortcut.TargetPath;
+                    }
+
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"/select,\"{targetPath}\"",
+                        UseShellExecute = true
+                    });
+
+                    break;
+                case "command":
+                    var cmd = yamlData.CommandList[filterResult.Text];
+
+                    try
+                    {
+                        var newYamlData = yamlData.GetExecFromAlias(cmd.Exec);
+                        var fileName = PathResolver.FindExecutableInPath(newYamlData);
+                        if (fileName.ToLower().EndsWith("explorer.exe"))
+                        {
+                            Process.Start(new ProcessStartInfo
+                            {
+                                FileName = "explorer.exe",
+                                Arguments = $"/select,\"{cmd.Args}\"",
+                                UseShellExecute = true
+                            });
+                        } else
+                        {
+                            throw new System.Exception(string.Format("このコマンドではファイルの場所を開くことができません。 {0} : {1}", cmd.Exec, cmd.Args));
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        System.Windows.MessageBox.Show(ex.Message, "実行エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
         public void Execute(FilterResult filterResult, string verb = "open")
         {
             switch(filterResult.Type)
@@ -122,7 +181,6 @@ namespace SimpleLauncher
                     };
 
                     Process.Start(psiExplorer);
-
                     break;
                 case "command":
                     var cmd = yamlData.CommandList[filterResult.Text];
