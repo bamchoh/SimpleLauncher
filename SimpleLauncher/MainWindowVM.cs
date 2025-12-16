@@ -63,6 +63,7 @@ namespace SimpleLauncher
     class MainWindowVM : BindableBase
     {
         private List<FilterResult> _filteredResult = new List<FilterResult>();
+        private List<FilterResult> _originalList = new List<FilterResult>();
         public List<FilterResult> FilteredResult
         {
             get { return _filteredResult; }
@@ -92,7 +93,7 @@ namespace SimpleLauncher
 
                 if(string.IsNullOrEmpty(_pattern))
                 {
-                    UpdateFilteredResult();
+                    FilteredResult = _originalList;
 
                     return;
                 }
@@ -188,16 +189,18 @@ namespace SimpleLauncher
 
         public void UpdateFilteredResult()
         {
-            FilteredResult = CreateOriginalList();
+            var filteredResult = CreateOriginalList();
 
-            FilteredResult.AddRange(LoadConfigYaml());
+            filteredResult.AddRange(LoadConfigYaml());
 
-            FilteredResult.Sort((a, b) =>
+            filteredResult.Sort((a, b) =>
             {
                 return string.Compare(a.Text, b.Text, StringComparison.OrdinalIgnoreCase);
             });
 
-            SelectedItem = _filteredResult[0];
+            FilteredResult = filteredResult;
+
+            _originalList = filteredResult;
         }
 
         private List<FilterResult> CreateOriginalList()

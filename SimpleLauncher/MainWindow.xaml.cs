@@ -162,6 +162,14 @@ namespace SimpleLauncher
                     e.Handled = true;
                 }
 
+                else if (e.Key == Key.U)
+                {
+                    var vm = (MainWindowVM)this.DataContext;
+                    vm.UpdateFilteredResult();
+                    PatternTextBox.Text = PatternTextBox.Text;
+                    e.Handled = true;
+                }
+
                 else if (e.Key == Key.Enter)
                 {
                     var vm = (MainWindowVM)this.DataContext;
