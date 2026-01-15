@@ -132,9 +132,9 @@ namespace SimpleLauncher
 
             this.Activate();
 
-            PatternTextBox.Text = "";
-
             PatternTextBox.Focus();
+
+            PatternTextBox.SelectAll();
         }
 
         private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
