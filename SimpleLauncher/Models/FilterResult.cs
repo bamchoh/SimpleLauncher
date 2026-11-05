@@ -1,7 +1,7 @@
 namespace SimpleLauncher.Models
 {
     /// <summary>
-    /// <see cref="FilterResult.Type"/> に入る値。fzf-filterd との JSON 契約に合わせて文字列で保持する。
+    /// <see cref="FilterResult.Type"/> に入る値。
     /// </summary>
     public static class ItemKind
     {
@@ -16,7 +16,7 @@ namespace SimpleLauncher.Models
     }
 
     /// <summary>
-    /// 一覧に表示される 1 項目。フィルタ結果として fzf-filterd から返されるほか、
+    /// 一覧に表示される 1 項目。あいまい検索の結果として生成されるほか、
     /// フィルタ無しの状態でも <see cref="Unmatched"/> で生成される。
     /// </summary>
     public class FilterResult

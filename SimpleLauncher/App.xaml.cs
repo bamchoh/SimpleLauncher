@@ -5,7 +5,6 @@ using System.Windows;
 using SimpleLauncher.Config;
 using SimpleLauncher.Interop;
 using SimpleLauncher.Services;
-using SimpleLauncher.Services.Fzf;
 using SimpleLauncher.ViewModels;
 using SimpleLauncher.Views;
 
@@ -23,7 +22,6 @@ namespace SimpleLauncher
         private bool _ownsMutex;
         private MainWindow? _mainWindow;
         private System.Windows.Forms.NotifyIcon? _notifyIcon;
-        private FzfFilterClient? _filterClient;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -53,7 +51,6 @@ namespace SimpleLauncher
         protected override void OnExit(ExitEventArgs e)
         {
             _notifyIcon?.Dispose();
-            _filterClient?.Dispose();
 
             if (_mutex != null)
             {
@@ -74,10 +71,9 @@ namespace SimpleLauncher
             var hotKey = HotKeyData.Parse(settings.HotKey);
 
             var shortcutResolver = new ShellLinkResolver();
-            _filterClient = new FzfFilterClient();
 
             var viewModel = new MainWindowVM(
-                _filterClient,
+                new LocalFilterService(),
                 new InstalledAppScanner(shortcutResolver),
                 new AppDataConfigStore(),
                 new RecentFilesScanner(shortcutResolver),

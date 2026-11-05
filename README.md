@@ -8,8 +8,9 @@ Windows 用のタスクトレイ常駐ランチャーです。グローバルホ
 - 設定 YAML に定義したコマンド
 - 最近使ったファイル (Recent タブ)
 
-あいまい検索は同梱の `fzf-filterd.exe` (名前付きパイプ経由の JSON-RPC) で行います。
-Recent タブはプロセス内の簡易マッチャーで検索します。
+あいまい検索は [fzf](https://github.com/junegunn/fzf) の FuzzyMatchV2 アルゴリズムを C# に移植したもの
+(`Services/Fuzzy/FzfMatcher.cs`) で、外部プロセスは使いません。All タブは fzf の `default` スキーム、
+Recent タブはパス向けの `path` スキームでスコアリングします。
 
 ## キー操作
 
@@ -59,7 +60,8 @@ SimpleLauncher/
   App.xaml(.cs)        エントリポイント。多重起動抑止、タスクトレイ、依存の組み立て
   Views/               MainWindow。キー入力を ViewModel の操作へ変換する
   ViewModels/          MainWindowVM。一覧・フィルタ・選択・起動の状態
-  Services/            アプリ走査、最近使ったファイル、fzf クライアント、起動情報の組み立て
+  Services/            アプリ走査、最近使ったファイル、起動情報の組み立て
+  Services/Fuzzy/      fzf FuzzyMatchV2 の移植とスコアリングのスキーム
   Config/              appsettings.json と simple-launcher.yaml の読み込み
   Controls/            一致文字を強調表示する TextBlock
   Interop/             グローバルホットキー

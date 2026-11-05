@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Prism.Mvvm;
 using SimpleLauncher.Models;
 using SimpleLauncher.Services;
+using SimpleLauncher.Services.Fuzzy;
 
 namespace SimpleLauncher.ViewModels
 {
@@ -298,7 +299,7 @@ namespace SimpleLauncher.ViewModels
         {
             RecentFiles = string.IsNullOrWhiteSpace(pattern)
                 ? _allRecentFiles
-                : LocalFuzzyMatcher.Filter(ItemKind.File, _allRecentFiles.Select(r => r.Text), pattern);
+                : FuzzyFilter.Filter(ItemKind.File, _allRecentFiles.Select(r => r.Text), pattern, FzfScheme.Path);
         }
 
         private static int IndexOf(IReadOnlyList<FilterResult> items, FilterResult? item)
