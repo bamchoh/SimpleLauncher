@@ -11,30 +11,62 @@
         Closing="Window_Closing"
         Title="Simple Launcher" Height="450" Width="800">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <DataTemplate x:Key="ResultItemTemplate">
             <controls:HookedTextBlock Text="{Binding Text}" />
         </DataTemplate>
+        <DataTemplate x:Key="ActionItemTemplate">
+            <DockPanel LastChildFill="True">
+                <TextBlock DockPanel.Dock="Right" Margin="16,0,0,0" Foreground="Gray" Text="{Binding KeyText}" />
+                <controls:HookedTextBlock DataContext="{Binding Match}" Text="{Binding Text}" />
+            </DockPanel>
+        </DataTemplate>
     </Window.Resources>
-    <TabControl x:Name="CategoryTabControl" Margin="10" SelectedIndex="{Binding SelectedTabIndex}">
-        <TabItem Header="All">
-            <DockPanel>
-                <TextBox x:Name="PatternTextBox" Height="30" Margin="10" DockPanel.Dock="Top"
-                         Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}" />
-                <ListBox x:Name="FilteredResultList" Margin="10"
-                         ItemsSource="{Binding FilteredResult}"
-                         SelectedItem="{Binding SelectedItem}"
-                         ItemTemplate="{StaticResource ResultItemTemplate}" />
-            </DockPanel>
-        </TabItem>
-        <TabItem Header="Recent">
-            <DockPanel>
-                <TextBox x:Name="RecentPatternTextBox" Height="30" Margin="10" DockPanel.Dock="Top"
-                         Text="{Binding RecentPattern, UpdateSourceTrigger=PropertyChanged}" />
-                <ListBox x:Name="RecentFilesList" Margin="10"
-                         ItemsSource="{Binding RecentFiles}"
-                         SelectedItem="{Binding SelectedRecentItem}"
-                         ItemTemplate="{StaticResource ResultItemTemplate}" />
-            </DockPanel>
-        </TabItem>
-    </TabControl>
+    <Grid>
+        <TabControl x:Name="CategoryTabControl" Margin="10" SelectedIndex="{Binding SelectedTabIndex}">
+            <TabItem Header="All">
+                <DockPanel>
+                    <TextBox x:Name="PatternTextBox" Height="30" Margin="10" DockPanel.Dock="Top"
+                             Text="{Binding Pattern, UpdateSourceTrigger=PropertyChanged}" />
+                    <ListBox x:Name="FilteredResultList" Margin="10"
+                             ItemsSource="{Binding FilteredResult}"
+                             SelectedItem="{Binding SelectedItem}"
+                             ItemTemplate="{StaticResource ResultItemTemplate}" />
+                </DockPanel>
+            </TabItem>
+            <TabItem Header="Recent">
+                <DockPanel>
+                    <TextBox x:Name="RecentPatternTextBox" Height="30" Margin="10" DockPanel.Dock="Top"
+                             Text="{Binding RecentPattern, UpdateSourceTrigger=PropertyChanged}" />
+                    <ListBox x:Name="RecentFilesList" Margin="10"
+                             ItemsSource="{Binding RecentFiles}"
+                             SelectedItem="{Binding SelectedRecentItem}"
+                             ItemTemplate="{StaticResource ResultItemTemplate}" />
+                </DockPanel>
+            </TabItem>
+        </TabControl>
+
+        <!-- アクションメニュー (Tab で開く) -->
+        <Border x:Name="ActionMenuOverlay"
+                Visibility="{Binding IsActionMenuOpen, Converter={StaticResource BoolToVisibility}}"
+                Background="#CC000000">
+            <Border MaxWidth="520" MaxHeight="360" Margin="40" Padding="12"
+                    Background="{DynamicResource {x:Static SystemColors.WindowBrushKey}}"
+                    BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}"
+                    BorderThickness="1" CornerRadius="4">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Margin="0,0,0,8" FontWeight="Bold"
+                               TextTrimming="CharacterEllipsis"
+                               Text="{Binding ActionMenuTarget.Text}" />
+                    <TextBox x:Name="ActionPatternTextBox" DockPanel.Dock="Top" Height="30" Margin="0,0,0,8"
+                             Text="{Binding ActionPattern, UpdateSourceTrigger=PropertyChanged}" />
+                    <ListBox x:Name="ActionList"
+                             ItemsSource="{Binding ActionMenuItems}"
+                             SelectedItem="{Binding SelectedActionMenuItem}"
+                             ItemTemplate="{StaticResource ActionItemTemplate}"
+                             HorizontalContentAlignment="Stretch" />
+                </DockPanel>
+            </Border>
+        </Border>
+    </Grid>
 </Window>

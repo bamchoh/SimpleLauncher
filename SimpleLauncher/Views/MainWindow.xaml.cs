@@ -1,7 +1,10 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
+using SimpleLauncher.Config;
 using SimpleLauncher.Interop;
 using SimpleLauncher.ViewModels;
 
@@ -15,6 +18,7 @@ namespace SimpleLauncher.Views
     {
         private readonly MainWindowVM _viewModel;
         private readonly HotKeyHelper _hotKeyHelper;
+        private Dictionary<HotKeyData, LauncherAction> _actionsByKey = new();
 
         public MainWindow(MainWindowVM viewModel, HotKeyData hotKey)
         {
@@ -22,6 +26,9 @@ namespace SimpleLauncher.Views
 
             _viewModel = viewModel;
             DataContext = viewModel;
+
+            RebuildActionShortcuts();
+            viewModel.PropertyChanged += ViewModel_PropertyChanged;
 
             Loaded += (_, _) => FocusActivePatternBox(selectAll: false);
 
@@ -36,20 +43,63 @@ namespace SimpleLauncher.Views
             }
         }
 
-        private TextBox ActivePatternTextBox => _viewModel.IsAppsTabActive ? PatternTextBox : RecentPatternTextBox;
+        private TextBox ActivePatternTextBox => _viewModel.IsActionMenuOpen
+            ? ActionPatternTextBox
+            : _viewModel.IsAppsTabActive ? PatternTextBox : RecentPatternTextBox;
 
-        private ListBox ActiveListBox => _viewModel.IsAppsTabActive ? FilteredResultList : RecentFilesList;
+        private ListBox ActiveListBox => _viewModel.IsActionMenuOpen
+            ? ActionList
+            : _viewModel.IsAppsTabActive ? FilteredResultList : RecentFilesList;
+
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(MainWindowVM.Actions))
+            {
+                RebuildActionShortcuts();
+            }
+        }
+
+        private void RebuildActionShortcuts()
+        {
+            var map = new Dictionary<HotKeyData, LauncherAction>();
+
+            foreach (var action in _viewModel.Actions)
+            {
+                if (action.Key == null)
+                {
+                    continue;
+                }
+
+                if (HotKeyData.TryParse(action.Key, out var key))
+                {
+                    map[key] = action;
+                }
+                else
+                {
+                    Debug.WriteLine($"Ignoring invalid action key \"{action.Key}\" for \"{action.Name}\"");
+                }
+            }
+
+            _actionsByKey = map;
+        }
 
         private void HotKeyPressed(object? sender, EventArgs e)
         {
+            _viewModel.CloseActionMenu();
             Show();
             Activate();
             FocusActivePatternBox(selectAll: true);
         }
 
+        private void HideWindow()
+        {
+            _viewModel.CloseActionMenu();
+            Hide();
+        }
+
         private void FocusActivePatternBox(bool selectAll)
         {
-            // タブ切替直後はコンテンツが生成されていないことがあるので、描画後にフォーカスする
+            // タブ切替やメニュー表示の直後はコンテンツが生成されていないことがあるので、描画後にフォーカスする
             Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
             {
                 var textBox = ActivePatternTextBox;
@@ -63,66 +113,103 @@ namespace SimpleLauncher.Views
 
         private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            e.Handled = Keyboard.Modifiers == ModifierKeys.Control
-                ? HandleControlKey(e.Key)
-                : HandlePlainKey(e.Key);
-        }
+            var key = e.Key == Key.System ? e.SystemKey : e.Key;
+            var modifiers = Keyboard.Modifiers;
 
-        private bool HandleControlKey(Key key)
-        {
-            switch (key)
+            e.Handled = _viewModel.IsActionMenuOpen
+                ? HandleActionMenuKey(modifiers, key)
+                : HandleListKey(modifiers, key);
+
+            if (!e.Handled && _actionsByKey.TryGetValue(new HotKeyData(modifiers, key), out var action))
             {
-                case Key.N:
-                    MoveSelection(+1);
-                    return true;
-
-                case Key.P:
-                    MoveSelection(-1);
-                    return true;
-
-                case Key.U:
-                    _ = _viewModel.ReloadAsync();
-                    return true;
-
-                case Key.I:
-                    HideUnlessFailed(_viewModel.OpenSelectedLocation());
-                    return true;
-
-                case Key.Enter:
-                    HideUnlessFailed(_viewModel.ExecuteSelected("runas"));
-                    return true;
-
-                case Key.PageDown:
-                case Key.F:
-                    _viewModel.SwitchTab(+1);
-                    FocusActivePatternBox(selectAll: false);
-                    return true;
-
-                case Key.PageUp:
-                    _viewModel.SwitchTab(-1);
-                    FocusActivePatternBox(selectAll: false);
-                    return true;
-
-                default:
-                    return false;
+                _viewModel.CloseActionMenu();
+                HideUnlessFailed(_viewModel.RunAction(action));
+                e.Handled = true;
             }
         }
 
-        private bool HandlePlainKey(Key key)
+        private bool HandleActionMenuKey(ModifierKeys modifiers, Key key)
         {
-            switch (key)
+            if (modifiers == ModifierKeys.None)
             {
-                case Key.Enter:
-                    HideUnlessFailed(_viewModel.ExecuteSelected());
-                    return true;
+                switch (key)
+                {
+                    case Key.Escape:
+                        _viewModel.CloseActionMenu();
+                        FocusActivePatternBox(selectAll: false);
+                        return true;
 
-                case Key.Escape:
-                    Hide();
-                    return true;
-
-                default:
-                    return false;
+                    case Key.Enter:
+                        HideUnlessFailed(_viewModel.RunSelectedAction());
+                        return true;
+                }
             }
+            else if (modifiers == ModifierKeys.Control)
+            {
+                switch (key)
+                {
+                    case Key.N:
+                        MoveSelection(+1);
+                        return true;
+
+                    case Key.P:
+                        MoveSelection(-1);
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool HandleListKey(ModifierKeys modifiers, Key key)
+        {
+            if (modifiers == ModifierKeys.None)
+            {
+                switch (key)
+                {
+                    case Key.Escape:
+                        HideWindow();
+                        return true;
+
+                    case Key.Tab:
+                        if (_viewModel.OpenActionMenu())
+                        {
+                            FocusActivePatternBox(selectAll: false);
+                        }
+
+                        return true;
+                }
+            }
+            else if (modifiers == ModifierKeys.Control)
+            {
+                switch (key)
+                {
+                    case Key.N:
+                        MoveSelection(+1);
+                        return true;
+
+                    case Key.P:
+                        MoveSelection(-1);
+                        return true;
+
+                    case Key.U:
+                        _ = _viewModel.ReloadAsync();
+                        return true;
+
+                    case Key.PageDown:
+                    case Key.F:
+                        _viewModel.SwitchTab(+1);
+                        FocusActivePatternBox(selectAll: false);
+                        return true;
+
+                    case Key.PageUp:
+                        _viewModel.SwitchTab(-1);
+                        FocusActivePatternBox(selectAll: false);
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         private void MoveSelection(int delta)
@@ -140,15 +227,19 @@ namespace SimpleLauncher.Views
         {
             if (outcome != LaunchOutcome.Failed)
             {
-                Hide();
+                HideWindow();
+            }
+            else
+            {
+                FocusActivePatternBox(selectAll: false);
             }
         }
 
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        private void Window_Closing(object sender, CancelEventArgs e)
         {
             // ユーザー操作による Close はキャンセルして非表示にする (終了はタスクトレイから)
             e.Cancel = true;
-            Hide();
+            HideWindow();
         }
     }
 }

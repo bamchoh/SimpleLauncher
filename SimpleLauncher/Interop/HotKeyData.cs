@@ -3,18 +3,8 @@ using System.Windows.Input;
 namespace SimpleLauncher.Interop
 {
     /// <summary>"Ctrl+Alt+O" のような文字列と修飾キー / キーの組を相互変換する。</summary>
-    public sealed class HotKeyData
+    public sealed record HotKeyData(ModifierKeys ModifierKeys, Key Key)
     {
-        public HotKeyData(ModifierKeys modifierKeys, Key key)
-        {
-            ModifierKeys = modifierKeys;
-            Key = key;
-        }
-
-        public ModifierKeys ModifierKeys { get; }
-
-        public Key Key { get; }
-
         /// <exception cref="FormatException">書式が不正な場合。</exception>
         public static HotKeyData Parse(string text)
         {
@@ -65,6 +55,20 @@ namespace SimpleLauncher.Interop
             }
 
             return new HotKeyData(modifiers, key.Value);
+        }
+
+        public static bool TryParse(string? text, out HotKeyData hotKey)
+        {
+            try
+            {
+                hotKey = Parse(text ?? string.Empty);
+                return true;
+            }
+            catch (FormatException)
+            {
+                hotKey = null!;
+                return false;
+            }
         }
 
         public override string ToString()

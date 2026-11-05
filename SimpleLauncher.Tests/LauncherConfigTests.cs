@@ -38,11 +38,11 @@ namespace SimpleLauncher.Tests
         }
 
         [Fact]
-        public void BuildCommandList_AddsEditCommandPointingAtConfigFile()
+        public void Build_AddsEditCommandPointingAtConfigFile()
         {
             var config = new LauncherConfig();
 
-            config.BuildCommandList(@"C:\conf\simple-launcher.yaml");
+            config.Build(@"C:\conf\simple-launcher.yaml");
 
             var edit = config.CommandList[LauncherConfig.EditCommandName];
             Assert.Equal("explorer", edit.Exec);
@@ -50,11 +50,11 @@ namespace SimpleLauncher.Tests
         }
 
         [Fact]
-        public void BuildCommandList_SkipsMalformedEntries()
+        public void Build_SkipsMalformedEntries()
         {
             var config = new LauncherConfig { List = { "bad", "good\nexec" } };
 
-            config.BuildCommandList("conf.yaml");
+            config.Build("conf.yaml");
 
             Assert.Equal(2, config.CommandList.Count);
             Assert.Contains("good", config.CommandList.Keys);

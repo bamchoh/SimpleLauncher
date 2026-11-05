@@ -14,7 +14,7 @@ namespace SimpleLauncher.Config
         public static LauncherConfig Parse(string yaml, string configPath)
         {
             var config = Deserializer.Deserialize<LauncherConfig>(yaml) ?? new LauncherConfig();
-            config.BuildCommandList(configPath);
+            config.Build(configPath);
             return config;
         }
 

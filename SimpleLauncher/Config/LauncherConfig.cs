@@ -21,14 +21,32 @@ namespace SimpleLauncher.Config
         [YamlMember(Alias = "list")]
         public List<string> List { get; set; } = new();
 
+        /// <summary>選択中の項目に対するアクション定義。</summary>
+        [YamlMember(Alias = "actions")]
+        public List<ActionConfig> Actions { get; set; } = new();
+
         [YamlIgnore]
         public Dictionary<string, CommandInfo> CommandList { get; private set; } = new();
 
+        /// <summary>組み込みアクションと <see cref="Actions"/> をマージしたもの。</summary>
+        [YamlIgnore]
+        public IReadOnlyList<LauncherAction> ActionList { get; private set; } = LauncherAction.Defaults;
+
         /// <summary>
-        /// <see cref="List"/> を解析して <see cref="CommandList"/> を組み立てる。
+        /// <see cref="List"/> と <see cref="Actions"/> を解析して
+        /// <see cref="CommandList"/> と <see cref="ActionList"/> を組み立てる。
         /// </summary>
         /// <param name="configPath"><see cref="EditCommandName"/> で開く設定ファイルのパス。</param>
-        public void BuildCommandList(string configPath)
+        public void Build(string configPath)
+        {
+            BuildCommandList(configPath);
+            BuildActionList();
+        }
+
+        public string GetExecFromAlias(string exec) =>
+            Alias.TryGetValue(exec, out var resolved) ? resolved : exec;
+
+        private void BuildCommandList(string configPath)
         {
             var commands = new Dictionary<string, CommandInfo>
             {
@@ -47,8 +65,15 @@ namespace SimpleLauncher.Config
             CommandList = commands;
         }
 
-        public string GetExecFromAlias(string exec) =>
-            Alias.TryGetValue(exec, out var resolved) ? resolved : exec;
+        private void BuildActionList()
+        {
+            var custom = Actions
+                .Select(a => a.ToAction())
+                .Where(a => a != null)
+                .Select(a => a!);
+
+            ActionList = LauncherAction.Merge(LauncherAction.Defaults, custom);
+        }
     }
 
     public sealed record CommandInfo(string Name, string Exec, string Args)
@@ -66,6 +91,41 @@ namespace SimpleLauncher.Config
 
             var args = lines.Length >= 3 ? string.Join("\n", lines.Skip(2)) : string.Empty;
             return new CommandInfo(lines[0], lines[1], args);
+        }
+    }
+
+    /// <summary>YAML の actions 要素。</summary>
+    public class ActionConfig
+    {
+        [YamlMember(Alias = "name")]
+        public string? Name { get; set; }
+
+        [YamlMember(Alias = "key")]
+        public string? Key { get; set; }
+
+        [YamlMember(Alias = "exec")]
+        public string? Exec { get; set; }
+
+        [YamlMember(Alias = "args")]
+        public string? Args { get; set; }
+
+        [YamlMember(Alias = "verb")]
+        public string? Verb { get; set; }
+
+        /// <returns>名前が無い場合は null。</returns>
+        public LauncherAction? ToAction()
+        {
+            if (string.IsNullOrWhiteSpace(Name))
+            {
+                return null;
+            }
+
+            return new LauncherAction(
+                Name.Trim(),
+                string.IsNullOrWhiteSpace(Key) ? null : Key.Trim(),
+                string.IsNullOrWhiteSpace(Exec) ? null : Exec.Trim(),
+                Args ?? string.Empty,
+                string.IsNullOrWhiteSpace(Verb) ? LauncherAction.DefaultVerb : Verb.Trim());
         }
     }
 }

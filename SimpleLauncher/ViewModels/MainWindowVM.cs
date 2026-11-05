@@ -1,12 +1,13 @@
 using System.Diagnostics;
 using Prism.Mvvm;
+using SimpleLauncher.Config;
 using SimpleLauncher.Models;
 using SimpleLauncher.Services;
 using SimpleLauncher.Services.Fuzzy;
 
 namespace SimpleLauncher.ViewModels
 {
-    /// <summary><see cref="MainWindowVM.ExecuteSelected"/> 等の結果。</summary>
+    /// <summary><see cref="MainWindowVM.RunAction"/> 等の結果。</summary>
     public enum LaunchOutcome
     {
         /// <summary>選択されている項目が無い。</summary>
@@ -19,11 +20,21 @@ namespace SimpleLauncher.ViewModels
         Failed,
     }
 
+    /// <summary>アクションメニューの 1 行。</summary>
+    /// <param name="Action">実行するアクション。</param>
+    /// <param name="Match">名前と強調位置。</param>
+    public sealed record ActionMenuItem(LauncherAction Action, FilterResult Match)
+    {
+        public string KeyText => Action.Key ?? string.Empty;
+    }
+
     public sealed class MainWindowVM : BindableBase
     {
         public const int AppsTabIndex = 0;
         public const int RecentTabIndex = 1;
         public const int TabCount = 2;
+
+        private const string ActionItemKind = "action";
 
         private readonly IFilterService _filter;
         private readonly IInstalledAppProvider _apps;
@@ -45,6 +56,13 @@ namespace SimpleLauncher.ViewModels
         private string _recentPattern = string.Empty;
         private IReadOnlyList<FilterResult> _recentFiles = Array.Empty<FilterResult>();
         private FilterResult? _selectedRecentItem;
+
+        private IReadOnlyList<LauncherAction> _actions = LauncherAction.Defaults;
+        private bool _isActionMenuOpen;
+        private FilterResult? _actionMenuTarget;
+        private string _actionPattern = string.Empty;
+        private IReadOnlyList<ActionMenuItem> _actionMenuItems = Array.Empty<ActionMenuItem>();
+        private ActionMenuItem? _selectedActionMenuItem;
 
         public MainWindowVM(
             IFilterService filter,
@@ -151,6 +169,57 @@ namespace SimpleLauncher.ViewModels
             set => SetProperty(ref _selectedRecentItem, value);
         }
 
+        // ---- アクション ----
+
+        /// <summary>利用できるアクション。設定の読み込みで更新される。</summary>
+        public IReadOnlyList<LauncherAction> Actions
+        {
+            get => _actions;
+            private set => SetProperty(ref _actions, value);
+        }
+
+        public bool IsActionMenuOpen
+        {
+            get => _isActionMenuOpen;
+            private set => SetProperty(ref _isActionMenuOpen, value);
+        }
+
+        /// <summary>アクションメニューの対象の項目。</summary>
+        public FilterResult? ActionMenuTarget
+        {
+            get => _actionMenuTarget;
+            private set => SetProperty(ref _actionMenuTarget, value);
+        }
+
+        public string ActionPattern
+        {
+            get => _actionPattern;
+            set
+            {
+                if (SetProperty(ref _actionPattern, value ?? string.Empty))
+                {
+                    ApplyActionPattern(_actionPattern);
+                }
+            }
+        }
+
+        public IReadOnlyList<ActionMenuItem> ActionMenuItems
+        {
+            get => _actionMenuItems;
+            private set
+            {
+                _actionMenuItems = value;
+                RaisePropertyChanged();
+                SelectedActionMenuItem = value.Count > 0 ? value[0] : null;
+            }
+        }
+
+        public ActionMenuItem? SelectedActionMenuItem
+        {
+            get => _selectedActionMenuItem;
+            set => SetProperty(ref _selectedActionMenuItem, value);
+        }
+
         // ---- 読み込み ----
 
         /// <summary>アプリ一覧・設定・最近使ったファイルをすべて読み込む。</summary>
@@ -177,6 +246,7 @@ namespace SimpleLauncher.ViewModels
 
                 _catalog = new LaunchCatalog(apps, config);
                 _allItems = items;
+                Actions = config.ActionList;
 
                 await ApplyPatternAsync(Pattern);
             }
@@ -204,25 +274,39 @@ namespace SimpleLauncher.ViewModels
 
         // ---- 操作 ----
 
-        /// <summary>アクティブなタブの選択を delta 件分動かす。端で止まる。</summary>
+        /// <summary>
+        /// 選択を delta 件分動かす。端で止まる。
+        /// アクションメニューが開いていればメニュー内の選択を動かす。
+        /// </summary>
         public void MoveSelection(int delta)
         {
+            if (IsActionMenuOpen)
+            {
+                var actions = ActionMenuItems;
+                if (actions.Count > 0)
+                {
+                    var current = IndexOf(actions, SelectedActionMenuItem);
+                    SelectedActionMenuItem = actions[Math.Clamp(current + delta, 0, actions.Count - 1)];
+                }
+
+                return;
+            }
+
             var items = ActiveItems;
             if (items.Count == 0)
             {
                 return;
             }
 
-            var current = IndexOf(items, ActiveSelectedItem);
-            var next = Math.Clamp(current + delta, 0, items.Count - 1);
+            var index = Math.Clamp(IndexOf(items, ActiveSelectedItem) + delta, 0, items.Count - 1);
 
             if (IsAppsTabActive)
             {
-                SelectedItem = items[next];
+                SelectedItem = items[index];
             }
             else
             {
-                SelectedRecentItem = items[next];
+                SelectedRecentItem = items[index];
             }
         }
 
@@ -232,16 +316,8 @@ namespace SimpleLauncher.ViewModels
             SelectedTabIndex = ((SelectedTabIndex + delta) % TabCount + TabCount) % TabCount;
         }
 
-        /// <summary>アクティブなタブで選択中の項目を起動する。</summary>
-        /// <param name="verb">"open" または "runas" (管理者として実行)。</param>
-        public LaunchOutcome ExecuteSelected(string verb = "open") =>
-            StartSelected(item => _planner.CreateLaunchInfo(item, _catalog, verb));
-
-        /// <summary>アクティブなタブで選択中の項目の場所をエクスプローラーで開く。</summary>
-        public LaunchOutcome OpenSelectedLocation() =>
-            StartSelected(item => _planner.CreateOpenLocationInfo(item, _catalog));
-
-        private LaunchOutcome StartSelected(Func<FilterResult, ProcessStartInfo> plan)
+        /// <summary>アクティブなタブで選択中の項目にアクションを適用する。</summary>
+        public LaunchOutcome RunAction(LauncherAction action)
         {
             var item = ActiveSelectedItem;
             if (item == null)
@@ -251,7 +327,7 @@ namespace SimpleLauncher.ViewModels
 
             try
             {
-                _processLauncher.Start(plan(item));
+                _processLauncher.Start(_planner.CreateActionInfo(action, item, _catalog));
                 return LaunchOutcome.Launched;
             }
             catch (Exception ex)
@@ -259,6 +335,38 @@ namespace SimpleLauncher.ViewModels
                 _errors.ShowError(ex.Message);
                 return LaunchOutcome.Failed;
             }
+        }
+
+        /// <summary>選択中の項目に対するアクションメニューを開く。</summary>
+        /// <returns>項目が選択されていなければ false。</returns>
+        public bool OpenActionMenu()
+        {
+            var item = ActiveSelectedItem;
+            if (item == null)
+            {
+                return false;
+            }
+
+            ActionMenuTarget = item;
+            ActionPattern = string.Empty;
+            ApplyActionPattern(string.Empty);
+            IsActionMenuOpen = true;
+            return true;
+        }
+
+        public void CloseActionMenu()
+        {
+            IsActionMenuOpen = false;
+            ActionMenuTarget = null;
+        }
+
+        /// <summary>メニューで選択中のアクションを実行し、メニューを閉じる。</summary>
+        public LaunchOutcome RunSelectedAction()
+        {
+            var selected = SelectedActionMenuItem;
+            CloseActionMenu();
+
+            return selected == null ? LaunchOutcome.NothingSelected : RunAction(selected.Action);
         }
 
         // ---- フィルタ ----
@@ -302,7 +410,16 @@ namespace SimpleLauncher.ViewModels
                 : FuzzyFilter.Filter(ItemKind.File, _allRecentFiles.Select(r => r.Text), pattern, FzfScheme.Path);
         }
 
-        private static int IndexOf(IReadOnlyList<FilterResult> items, FilterResult? item)
+        private void ApplyActionPattern(string pattern)
+        {
+            var byName = Actions.ToDictionary(a => a.Name, a => a);
+
+            ActionMenuItems = FuzzyFilter.Filter(ActionItemKind, byName.Keys, pattern)
+                .Select(match => new ActionMenuItem(byName[match.Text], match))
+                .ToList();
+        }
+
+        private static int IndexOf<T>(IReadOnlyList<T> items, T? item) where T : class
         {
             if (item == null)
             {

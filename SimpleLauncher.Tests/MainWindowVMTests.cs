@@ -29,7 +29,7 @@ namespace SimpleLauncher.Tests
                 _config,
                 _recent,
                 _processes,
-                new LaunchPlanner(_resolver, _ => null),
+                new LaunchPlanner(_resolver, _ => null, _ => false),
                 _errors);
         }
 
@@ -217,12 +217,12 @@ namespace SimpleLauncher.Tests
         }
 
         [Fact]
-        public async Task ExecuteSelected_OnAppsTab_LaunchesSelectedApp()
+        public async Task RunAction_OnAppsTab_LaunchesSelectedApp()
         {
             await _vm.InitializeAsync();
             _vm.SelectedItem = _vm.FilteredResult.Single(r => r.Text == "Editor");
 
-            var outcome = _vm.ExecuteSelected("runas");
+            var outcome = _vm.RunAction(LauncherAction.RunAsAdmin);
 
             Assert.Equal(LaunchOutcome.Launched, outcome);
             var psi = Assert.Single(_processes.Started);
@@ -231,60 +231,60 @@ namespace SimpleLauncher.Tests
         }
 
         [Fact]
-        public async Task ExecuteSelected_OnRecentTab_LaunchesSelectedFile()
+        public async Task RunAction_OnRecentTab_LaunchesSelectedFile()
         {
             await _vm.InitializeAsync();
             _vm.SelectedTabIndex = MainWindowVM.RecentTabIndex;
 
-            var outcome = _vm.ExecuteSelected();
+            var outcome = _vm.RunAction(LauncherAction.Open);
 
             Assert.Equal(LaunchOutcome.Launched, outcome);
             Assert.Equal(@"C:\docs\report.docx", Assert.Single(_processes.Started).FileName);
         }
 
         [Fact]
-        public void ExecuteSelected_NothingSelected_DoesNotLaunch()
+        public void RunAction_NothingSelected_DoesNotLaunch()
         {
-            var outcome = _vm.ExecuteSelected();
+            var outcome = _vm.RunAction(LauncherAction.Open);
 
             Assert.Equal(LaunchOutcome.NothingSelected, outcome);
             Assert.Empty(_processes.Started);
         }
 
         [Fact]
-        public async Task ExecuteSelected_WhenLaunchFails_ReportsError()
+        public async Task RunAction_WhenLaunchFails_ReportsError()
         {
             await _vm.InitializeAsync();
             _processes.Failure = new System.ComponentModel.Win32Exception("cancelled by user");
 
-            var outcome = _vm.ExecuteSelected();
+            var outcome = _vm.RunAction(LauncherAction.Open);
 
             Assert.Equal(LaunchOutcome.Failed, outcome);
             Assert.Contains("cancelled by user", Assert.Single(_errors.Errors));
         }
 
         [Fact]
-        public async Task OpenSelectedLocation_UsesExplorer()
+        public async Task RunAction_OpenLocation_UsesExplorer()
         {
             await _vm.InitializeAsync();
             _resolver.Targets[@"C:\menu\Editor.lnk"] = @"C:\Editor\editor.exe";
             _vm.SelectedItem = _vm.FilteredResult.Single(r => r.Text == "Editor");
 
-            var outcome = _vm.OpenSelectedLocation();
+            var outcome = _vm.RunAction(LauncherAction.OpenLocation);
 
             Assert.Equal(LaunchOutcome.Launched, outcome);
             var psi = Assert.Single(_processes.Started);
-            Assert.Equal("explorer.exe", psi.FileName);
+            Assert.Equal("explorer", psi.FileName);
             Assert.Contains(@"C:\Editor\editor.exe", psi.Arguments);
         }
 
         [Fact]
-        public async Task OpenSelectedLocation_ForCommandWithoutLocation_ReportsError()
+        public async Task RunAction_OpenLocation_ForCommandWithoutLocation_ReportsError()
         {
             await _vm.InitializeAsync();
             _vm.SelectedItem = _vm.FilteredResult.Single(r => r.Text == "shell");
 
-            var outcome = _vm.OpenSelectedLocation();
+            var outcome = _vm.RunAction(LauncherAction.OpenLocation);
 
             Assert.Equal(LaunchOutcome.Failed, outcome);
             Assert.Single(_errors.Errors);

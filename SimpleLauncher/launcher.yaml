@@ -2,6 +2,7 @@ version: 1
 alias:
   chrome: C:\Program Files\Google\Chrome\Application\chrome.exe
 
+# コマンド。1 要素につき「表示名 / 実行ファイル / 引数 (省略可)」を改行で並べる
 list:
   - |-
     power shell
@@ -10,3 +11,17 @@ list:
     google.com
     chrome
     https://www.google.com
+
+# 選択中の項目に対するアクション。Tab でメニューを開くか、key で直接実行する。
+# exec と args では {path} (項目の実体) と {dir} (そのフォルダ) が使える。
+# exec を省略すると項目そのものを verb (open / runas) で起動する。
+# 組み込み: 開く (Enter)、管理者として実行 (Ctrl+Enter)、場所を開く (Ctrl+I)。同名で上書きできる。
+actions:
+  - name: ターミナルで開く
+    key: Ctrl+T
+    exec: wt
+    args: -d "{dir}"
+  - name: VS Code で開く
+    key: Ctrl+O
+    exec: code
+    args: "{dir}"

@@ -14,7 +14,7 @@ namespace SimpleLauncher.Tests
 
         public LaunchPlannerTests()
         {
-            _planner = new LaunchPlanner(_resolver, name => name == "explorer" ? ExplorerPath : null);
+            _planner = new LaunchPlanner(_resolver, name => name == "explorer" ? ExplorerPath : null, path => path.EndsWith("Downloads"));
 
             var config = LauncherConfigLoader.Parse("""
                 alias:
@@ -97,61 +97,61 @@ namespace SimpleLauncher.Tests
         }
 
         [Fact]
-        public void CreateOpenLocationInfo_App_SelectsShortcutTargetInExplorer()
+        public void OpenLocationAction_App_SelectsShortcutTargetInExplorer()
         {
             _resolver.Targets[@"C:\menu\Editor.lnk"] = @"C:\Editor\editor.exe";
 
-            var psi = _planner.CreateOpenLocationInfo(Items.App("Editor"), _catalog);
+            var psi = _planner.CreateActionInfo(LauncherAction.OpenLocation, Items.App("Editor"), _catalog);
 
-            Assert.Equal("explorer.exe", psi.FileName);
+            Assert.Equal(ExplorerPath, psi.FileName);
             Assert.Equal("/select,\"C:\\Editor\\editor.exe\"", psi.Arguments);
         }
 
         [Fact]
-        public void CreateOpenLocationInfo_App_FallsBackToShortcutWhenUnresolvable()
+        public void OpenLocationAction_App_FallsBackToShortcutWhenUnresolvable()
         {
-            var psi = _planner.CreateOpenLocationInfo(Items.App("Editor"), _catalog);
+            var psi = _planner.CreateActionInfo(LauncherAction.OpenLocation, Items.App("Editor"), _catalog);
 
             Assert.Equal("/select,\"C:\\menu\\Editor.lnk\"", psi.Arguments);
         }
 
         [Fact]
-        public void CreateOpenLocationInfo_DesktopFile_SelectsItDirectly()
+        public void OpenLocationAction_DesktopFile_SelectsItDirectly()
         {
-            var psi = _planner.CreateOpenLocationInfo(Items.App(@"C:\Desktop\todo.txt"), _catalog);
+            var psi = _planner.CreateActionInfo(LauncherAction.OpenLocation, Items.App(@"C:\Desktop\todo.txt"), _catalog);
 
             Assert.Equal("/select,\"C:\\Desktop\\todo.txt\"", psi.Arguments);
         }
 
         [Fact]
-        public void CreateOpenLocationInfo_RecentFile_SelectsIt()
+        public void OpenLocationAction_RecentFile_SelectsIt()
         {
-            var psi = _planner.CreateOpenLocationInfo(Items.File(@"C:\docs\notes.txt"), _catalog);
+            var psi = _planner.CreateActionInfo(LauncherAction.OpenLocation, Items.File(@"C:\docs\notes.txt"), _catalog);
 
-            Assert.Equal("explorer.exe", psi.FileName);
+            Assert.Equal(ExplorerPath, psi.FileName);
             Assert.Equal("/select,\"C:\\docs\\notes.txt\"", psi.Arguments);
         }
 
         [Fact]
-        public void CreateOpenLocationInfo_ExplorerCommand_SelectsItsArgument()
+        public void OpenLocationAction_ExplorerCommand_SelectsItsArgument()
         {
-            var psi = _planner.CreateOpenLocationInfo(Items.Command("downloads"), _catalog);
+            var psi = _planner.CreateActionInfo(LauncherAction.OpenLocation, Items.Command("downloads"), _catalog);
 
             Assert.Equal("/select,\"C:\\Users\\me\\Downloads\"", psi.Arguments);
         }
 
         [Fact]
-        public void CreateOpenLocationInfo_EditCommand_DoesNotDoubleQuote()
+        public void OpenLocationAction_EditCommand_DoesNotDoubleQuote()
         {
-            var psi = _planner.CreateOpenLocationInfo(Items.Command(LauncherConfig.EditCommandName), _catalog);
+            var psi = _planner.CreateActionInfo(LauncherAction.OpenLocation, Items.Command(LauncherConfig.EditCommandName), _catalog);
 
             Assert.Equal("/select,\"C:\\conf\\simple-launcher.yaml\"", psi.Arguments);
         }
 
         [Fact]
-        public void CreateOpenLocationInfo_NonExplorerCommand_Throws()
+        public void OpenLocationAction_NonExplorerCommand_Throws()
         {
-            var ex = Assert.Throws<LaunchException>(() => _planner.CreateOpenLocationInfo(Items.Command("shell"), _catalog));
+            var ex = Assert.Throws<LaunchException>(() => _planner.CreateActionInfo(LauncherAction.OpenLocation, Items.Command("shell"), _catalog));
 
             Assert.Contains("powershell", ex.Message);
         }
