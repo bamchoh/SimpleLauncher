@@ -1,109 +1,154 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Threading;
 using System.Windows;
+using SimpleLauncher.Config;
+using SimpleLauncher.Interop;
+using SimpleLauncher.Services;
+using SimpleLauncher.Services.Fzf;
+using SimpleLauncher.ViewModels;
+using SimpleLauncher.Views;
 
 namespace SimpleLauncher
 {
     /// <summary>
-    /// Interaction logic for App.xaml
+    /// アプリケーションのエントリポイント兼コンポジションルート。
+    /// 多重起動を抑止し、タスクトレイ常駐のメインウィンドウを組み立てる。
     /// </summary>
     public partial class App : System.Windows.Application
     {
-        // 内部変数
-        private bool bOwnerShip = false;
-        private Mutex? hMutex = null;
-        private MainWindow? mainWindow = null;
+        private const string FallbackMutexGuid = "00000000-1111-2222-3333-444444444444";
+
+        private Mutex? _mutex;
+        private bool _ownsMutex;
+        private MainWindow? _mainWindow;
+        private System.Windows.Forms.NotifyIcon? _notifyIcon;
+        private FzfFilterClient? _filterClient;
 
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
-            var icon = GetResourceStream(new Uri("favicon.ico", UriKind.Relative)).Stream;
-            var menu = new System.Windows.Forms.ContextMenuStrip();
-            menu.Items.Add("設定", null, ShowMainWindow);
-            menu.Items.Add("終了", null, Exit_Click);
-            var notifyIcon = new System.Windows.Forms.NotifyIcon
+            if (!TryAcquireSingleInstanceMutex())
             {
-                Visible = true,
-                Icon = new System.Drawing.Icon(icon),
-                Text = "Simple Launcher",
-                ContextMenuStrip = menu
-            };
-        }
-
-        private void ShowMainWindow(object? sender, EventArgs e)
-        {
-            mainWindow?.Show();
-            mainWindow?.Activate();
-        }
-
-        private void Exit_Click(object? sender, EventArgs e)
-        {
-            Shutdown();
-        }
-
-        private void Application_Startup(object sender, StartupEventArgs e)
-        {
-            // 多重起動抑止 - 前処理
-            var assembly = Assembly.GetExecutingAssembly();
-            var guidAttr = assembly.GetCustomAttribute<GuidAttribute>();
-            string mutexName = string.Format("{0}-{1}",
-                                        Process.GetCurrentProcess().ProcessName,
-                                        guidAttr?.Value ?? "00000000-1111-2222-3333-444444444444");
-            hMutex = new Mutex(bOwnerShip, mutexName);
+                Shutdown();
+                return;
+            }
 
             try
             {
-                bOwnerShip = hMutex.WaitOne(0);
-            }
-            catch (AbandonedMutexException)
-            {
-                // 正しく開放されずに破棄されていたという通知なので無視
-                bOwnerShip = true;
-            }
-            catch { /* NOP */ }
+                _mainWindow = CreateMainWindow();
+                _mainWindow.ShowInTaskbar = false;
+                _mainWindow.Hide();
 
-            // 多重起動抑止 - 判定
-            if (bOwnerShip)
-            {
-                // メインウィンドウ
-                try
-                {
-                    mainWindow = new MainWindow();
-                    mainWindow.ShowInTaskbar = false;
-                    mainWindow.Hide();
-                }
-                catch (Exception ex)
-                {
-                    System.Windows.MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    Shutdown();
-                }
+                _notifyIcon = CreateNotifyIcon();
             }
-            else
+            catch (Exception ex)
             {
-                hMutex.Close();
-                hMutex = null;
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown();
             }
         }
 
-        private void Application_Exit(object sender, ExitEventArgs e)
+        protected override void OnExit(ExitEventArgs e)
         {
-            // 多重起動抑止 - 後処理
-            if (hMutex != null)
+            _notifyIcon?.Dispose();
+            _filterClient?.Dispose();
+
+            if (_mutex != null)
             {
-                if (bOwnerShip)
+                if (_ownsMutex)
                 {
-                    // 所有権解放
-                    hMutex.ReleaseMutex();
+                    _mutex.ReleaseMutex();
                 }
-                hMutex.Close();
+
+                _mutex.Dispose();
+            }
+
+            base.OnExit(e);
+        }
+
+        private MainWindow CreateMainWindow()
+        {
+            var settings = AppSettings.Load(AppContext.BaseDirectory);
+            var hotKey = HotKeyData.Parse(settings.HotKey);
+
+            var shortcutResolver = new ShellLinkResolver();
+            _filterClient = new FzfFilterClient();
+
+            var viewModel = new MainWindowVM(
+                _filterClient,
+                new InstalledAppScanner(shortcutResolver),
+                new AppDataConfigStore(),
+                new RecentFilesScanner(shortcutResolver),
+                new ProcessLauncher(),
+                new LaunchPlanner(shortcutResolver),
+                new MessageBoxErrorReporter());
+
+            var window = new MainWindow(viewModel, hotKey);
+
+            // 一覧の読み込みはウィンドウ表示をブロックしない
+            _ = viewModel.InitializeAsync();
+
+            return window;
+        }
+
+        private System.Windows.Forms.NotifyIcon CreateNotifyIcon()
+        {
+            var iconStream = GetResourceStream(new Uri("favicon.ico", UriKind.Relative))?.Stream
+                ?? throw new InvalidOperationException("favicon.ico が見つかりません。");
+
+            var menu = new System.Windows.Forms.ContextMenuStrip();
+            menu.Items.Add("設定", null, (_, _) => ShowMainWindow());
+            menu.Items.Add("終了", null, (_, _) => Shutdown());
+
+            return new System.Windows.Forms.NotifyIcon
+            {
+                Visible = true,
+                Icon = new System.Drawing.Icon(iconStream),
+                Text = "Simple Launcher",
+                ContextMenuStrip = menu,
+            };
+        }
+
+        private void ShowMainWindow()
+        {
+            _mainWindow?.Show();
+            _mainWindow?.Activate();
+        }
+
+        private bool TryAcquireSingleInstanceMutex()
+        {
+            var guid = Assembly.GetExecutingAssembly().GetCustomAttribute<GuidAttribute>()?.Value ?? FallbackMutexGuid;
+            var mutexName = $"{Process.GetCurrentProcess().ProcessName}-{guid}";
+
+            _mutex = new Mutex(false, mutexName);
+
+            try
+            {
+                _ownsMutex = _mutex.WaitOne(0);
+            }
+            catch (AbandonedMutexException)
+            {
+                // 前のインスタンスが解放せずに終了していた場合。所有権はこちらに移っている
+                _ownsMutex = true;
+            }
+
+            if (!_ownsMutex)
+            {
+                _mutex.Dispose();
+                _mutex = null;
+            }
+
+            return _ownsMutex;
+        }
+
+        private sealed class MessageBoxErrorReporter : IErrorReporter
+        {
+            public void ShowError(string message)
+            {
+                MessageBox.Show(message, "実行エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
-
 }
